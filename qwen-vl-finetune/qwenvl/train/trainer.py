@@ -277,8 +277,17 @@ def _dummy_vision_zero(model, inputs_embeds):
         elif isinstance(o, (list, tuple)):
             for item in o:
                 collect(item)
+        elif isinstance(o, dict):  # includes transformers ModelOutput (v5)
+            for item in o.values():
+                collect(item)
 
     collect(out)
+    if not leaves:
+        # Without a tensor to tie into the graph, no gradient flows through the
+        # vision tower and the backward collectives desync again — fail loudly.
+        raise RuntimeError(
+            f"dummy vision forward returned no tensors (got {type(out).__name__})"
+        )
     zero = sum(leaf.float().sum() for leaf in leaves) * 0.0
     return zero.to(inputs_embeds.dtype)
 
