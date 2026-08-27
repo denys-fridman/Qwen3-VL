@@ -200,16 +200,14 @@ def qwen3vl_forward(
     return attn_output, attn_weights
 
 
-def return_mask(
-    config,
-    input_embeds,
-    attention_mask,
-    cache_position,
-    past_key_values,
-    position_ids,
-    **kwargs
-):
-    return attention_mask
+def return_mask(*args, **kwargs):
+    # Pass the collator's cu_seqlens tensor through unchanged. Signature-agnostic
+    # because transformers renames create_causal_mask arguments across versions
+    # (e.g. input_embeds/cache_position changed in v5).
+    if "attention_mask" in kwargs:
+        return kwargs["attention_mask"]
+    # transformers 4.x positional layout: (config, input_embeds, attention_mask, ...)
+    return args[2] if len(args) > 2 else None
 
 
 def replace_qwen2_vl_attention_class():
