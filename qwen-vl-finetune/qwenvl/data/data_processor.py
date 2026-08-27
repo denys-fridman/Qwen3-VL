@@ -202,6 +202,7 @@ def _build_messages(item: Dict[str, Any], base_path: Path) -> List[Dict[str, Any
 def preprocess_qwen_visual(
     sources,
     processor,
+    train_on_all_tokens=False,
 ) -> Dict:
     if len(sources) != 1:
         raise ValueError(f"Expected 1 source, got {len(sources)}")
@@ -218,23 +219,31 @@ def preprocess_qwen_visual(
     if isinstance(input_ids, list):
         input_ids = torch.tensor(input_ids).unsqueeze(0)
 
-    labels = torch.full_like(input_ids, IGNORE_INDEX)
+    if train_on_all_tokens:
+        # Continued pretraining: loss on every token except vision placeholders,
+        # which are replaced by visual embeddings and are never valid targets.
+        labels = input_ids.clone()
+        labels[
+            (input_ids == IMAGE_TOKEN_INDEX) | (input_ids == VIDEO_TOKEN_INDEX)
+        ] = IGNORE_INDEX
+    else:
+        labels = torch.full_like(input_ids, IGNORE_INDEX)
 
-    input_ids_flat = input_ids[0].tolist()
-    L = len(input_ids_flat)
-    pos = 0
-    while pos < L:
-        if input_ids_flat[pos] == 77091:
-            ans_start = pos + 2
-            ans_end = ans_start
-            while ans_end < L and input_ids_flat[ans_end] != 151645:
-                ans_end += 1
-            if ans_end < L:
-                labels[0, ans_start : ans_end + 2] = input_ids[
-                    0, ans_start : ans_end + 2
-                ]
-                pos = ans_end
-        pos += 1
+        input_ids_flat = input_ids[0].tolist()
+        L = len(input_ids_flat)
+        pos = 0
+        while pos < L:
+            if input_ids_flat[pos] == 77091:
+                ans_start = pos + 2
+                ans_end = ans_start
+                while ans_end < L and input_ids_flat[ans_end] != 151645:
+                    ans_end += 1
+                if ans_end < L:
+                    labels[0, ans_start : ans_end + 2] = input_ids[
+                        0, ans_start : ans_end + 2
+                    ]
+                    pos = ans_end
+            pos += 1
 
     full_result["labels"] = labels
     full_result["input_ids"] = input_ids
@@ -390,6 +399,7 @@ class LazySupervisedDataset(Dataset):
         data_dict = preprocess_qwen_visual(
             sources,
             self.processor,
+            train_on_all_tokens=getattr(self.data_args, "train_on_all_tokens", False),
         )
 
         seq_len = data_dict["input_ids"][0].size(0)

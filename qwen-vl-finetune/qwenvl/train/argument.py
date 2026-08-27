@@ -13,6 +13,13 @@ class ModelArguments:
 @dataclass
 class DataArguments:
     dataset_use: str = field(default="")
+    train_on_all_tokens: bool = field(
+        default=False,
+        metadata={
+            "help": "Compute next-token loss on the full sequence (continued pretraining) "
+            "instead of assistant responses only (SFT). Vision placeholder tokens are always excluded."
+        },
+    )
     data_flatten: bool = field(default=False)
     data_packing: bool = field(default=False)
     base_interval: int = field(default=2)
