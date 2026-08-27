@@ -42,6 +42,11 @@ from pathlib import Path
 import requests
 from PIL import Image
 
+try:
+    from tqdm import tqdm
+except ImportError:
+    tqdm = None
+
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; qwenvl-mint1t-preprocess)"}
 # Budget estimate per image when chunking, in "words". Covers up to
 # --max_pixels 576*28*28 (144 visual tokens); raise it if you train larger.
@@ -67,6 +72,26 @@ def iter_documents(data_files):
             with open(path) as f:
                 data = json.load(f)
             yield from (data if isinstance(data, list) else [data])
+
+
+def count_documents(data_files):
+    total = 0
+    for path in sorted(glob.glob(data_files)):
+        try:
+            if path.endswith(".parquet"):
+                import pyarrow.parquet as pq
+
+                total += pq.ParquetFile(path).metadata.num_rows
+            elif path.endswith(".jsonl"):
+                with open(path) as f:
+                    total += sum(1 for line in f if line.strip())
+            else:
+                with open(path) as f:
+                    data = json.load(f)
+                total += len(data) if isinstance(data, list) else 1
+        except Exception:
+            return None
+    return total
 
 
 def download_image(url, out_path, timeout):
@@ -206,9 +231,13 @@ def main():
     annotation_path = output_dir / "annotations.jsonl"
 
     docs = iter_documents(args.data_files)
+    total_docs = count_documents(args.data_files)
     if args.max_docs:
         docs = itertools.islice(docs, args.max_docs)
+        if total_docs is not None:
+            total_docs = min(total_docs, args.max_docs)
 
+    progress = tqdm(total=total_docs, unit="doc", dynamic_ncols=True) if tqdm else None
     totals = {"docs": 0, "samples": 0, "images_ok": 0, "images_failed": 0}
     with open(annotation_path, "w") as fout, ThreadPoolExecutor(args.num_workers) as pool:
         for batch in batched(docs, args.num_workers * 8):
@@ -222,11 +251,22 @@ def main():
                 totals["images_failed"] += stats["images_failed"]
                 for sample in samples:
                     fout.write(json.dumps(sample, ensure_ascii=False) + "\n")
-            print(
-                f"docs={totals['docs']} samples={totals['samples']} "
-                f"images ok={totals['images_ok']} failed={totals['images_failed']}",
-                flush=True,
-            )
+                if progress:
+                    progress.update(1)
+                    progress.set_postfix(
+                        samples=totals["samples"],
+                        img_ok=totals["images_ok"],
+                        img_fail=totals["images_failed"],
+                    )
+            if not progress:
+                of_total = f"/{total_docs}" if total_docs is not None else ""
+                print(
+                    f"docs={totals['docs']}{of_total} samples={totals['samples']} "
+                    f"images ok={totals['images_ok']} failed={totals['images_failed']}",
+                    flush=True,
+                )
+    if progress:
+        progress.close()
 
     print(f"\nWrote {totals['samples']} samples to {annotation_path}")
     print(f"Images in {images_dir}: {totals['images_ok']} ok, {totals['images_failed']} failed/skipped")
