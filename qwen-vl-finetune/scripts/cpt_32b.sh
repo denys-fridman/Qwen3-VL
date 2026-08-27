@@ -42,6 +42,8 @@ datasets=${DATASETS:-"mint1t%100"}
 # Output configuration
 run_name="qwen3vl-32b-cpt"
 output_dir=./output_cpt_32b
+# Metrics reporting: "none" by default; e.g. REPORT_TO=wandb to enable
+report_to=${REPORT_TO:-"none"}
 
 # Training arguments
 args="
@@ -74,7 +76,7 @@ args="
     --gradient_checkpointing True \
     --dataloader_num_workers 4 \
     --run_name ${run_name} \
-    --report_to wandb"
+    --report_to ${report_to}"
 
 # Launch training
 torchrun --nproc_per_node=${NPROC_PER_NODE} \
