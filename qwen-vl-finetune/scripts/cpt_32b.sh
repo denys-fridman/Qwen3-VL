@@ -55,6 +55,11 @@ report_to=${REPORT_TO:-"none"}
 #       batches need no workaround
 allow_text_only=True
 
+# Development knob: train only the last N LLM decoder layers (plus final norm
+# and lm_head), freezing the rest. Cuts optimizer-state memory roughly in
+# proportion, e.g. LLM_LAST_N=8 fits a single node; -1 trains the full LLM.
+llm_last_n=${LLM_LAST_N:--1}
+
 # Training arguments
 args="
     --deepspeed ${deepspeed} \
@@ -66,6 +71,7 @@ args="
     --tune_mm_vision False \
     --tune_mm_mlp True \
     --tune_mm_llm True \
+    --tune_llm_last_n_layers ${llm_last_n} \
     --bf16 \
     --output_dir ${output_dir} \
     --num_train_epochs 1 \

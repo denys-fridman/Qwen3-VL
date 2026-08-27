@@ -99,6 +99,14 @@ def set_model(model_args, model):
             p.requires_grad = True
         for p in model.lm_head.parameters():
             p.requires_grad = True
+        if model_args.tune_llm_last_n_layers > 0:
+            for n, p in language_model.named_parameters():
+                p.requires_grad = False
+            for layer in language_model.layers[-model_args.tune_llm_last_n_layers :]:
+                for p in layer.parameters():
+                    p.requires_grad = True
+            for p in language_model.norm.parameters():
+                p.requires_grad = True
     else:
         for n, p in language_model.named_parameters():
             p.requires_grad = False

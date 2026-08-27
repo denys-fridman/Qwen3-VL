@@ -9,6 +9,14 @@ class ModelArguments:
     tune_mm_llm: bool = field(default=False)
     tune_mm_mlp: bool = field(default=False)
     tune_mm_vision: bool = field(default=False)
+    tune_llm_last_n_layers: int = field(
+        default=-1,
+        metadata={
+            "help": "With tune_mm_llm, train only the last N decoder layers (plus "
+            "final norm and lm_head) and freeze the rest, cutting optimizer-state "
+            "memory for development runs. -1 trains the full LLM."
+        },
+    )
 
 @dataclass
 class DataArguments:
