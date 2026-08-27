@@ -283,10 +283,11 @@ def main():
 
     print(f"\nWrote {totals['samples']} samples to {annotation_path}")
     print(f"Images in {images_dir}: {totals['images_ok']} ok, {totals['images_failed']} failed/skipped")
+    extra_flags = " --allow_text_only True" if args.keep_text_only else ""
     print(
         "\nRegister in qwenvl/data/__init__.py as:\n"
         f'  MINT1T = {{"annotation_path": "{annotation_path}", "data_path": "{output_dir}"}}\n'
-        "and train with --dataset_use mint1t --train_on_all_tokens True"
+        f"and train with --dataset_use mint1t --train_on_all_tokens True{extra_flags}"
     )
 
 

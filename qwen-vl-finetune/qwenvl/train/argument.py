@@ -20,6 +20,14 @@ class DataArguments:
             "instead of assistant responses only (SFT). Vision placeholder tokens are always excluded."
         },
     )
+    allow_text_only: bool = field(
+        default=False,
+        metadata={
+            "help": "Allow samples without images: run a zero-weighted dummy vision "
+            "forward on text-only batches so DeepSpeed ZeRO-3 collectives stay "
+            "aligned across ranks."
+        },
+    )
     data_flatten: bool = field(default=False)
     data_packing: bool = field(default=False)
     base_interval: int = field(default=2)

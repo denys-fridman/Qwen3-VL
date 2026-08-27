@@ -250,6 +250,67 @@ def replace_qwen2_vl_attention_class():
     )
 
 
+def _dummy_vision_zero(model, inputs_embeds):
+    """Run the vision tower on a minimal dummy input and return a zero scalar
+    tied to its outputs, so text-only batches execute the same modules (and
+    the same ZeRO-3 parameter all-gathers) as image batches."""
+    vision_config = model.config.vision_config
+    merge = getattr(vision_config, "spatial_merge_size", 2)
+    patch_dim = (
+        getattr(vision_config, "in_channels", 3)
+        * getattr(vision_config, "temporal_patch_size", 2)
+        * vision_config.patch_size**2
+    )
+    pixels = torch.zeros(
+        merge * merge, patch_dim, device=inputs_embeds.device, dtype=inputs_embeds.dtype
+    )
+    grid = torch.tensor(
+        [[1, merge, merge]], device=inputs_embeds.device, dtype=torch.long
+    )
+    out = model.visual(pixels, grid_thw=grid)
+
+    leaves = []
+
+    def collect(o):
+        if torch.is_tensor(o):
+            leaves.append(o)
+        elif isinstance(o, (list, tuple)):
+            for item in o:
+                collect(item)
+
+    collect(out)
+    zero = sum(leaf.float().sum() for leaf in leaves) * 0.0
+    return zero.to(inputs_embeds.dtype)
+
+
+def _make_forward_with_dummy_vision(orig_forward):
+    def forward(self, **kwargs):
+        if (
+            self.training
+            and kwargs.get("pixel_values") is None
+            and kwargs.get("pixel_values_videos") is None
+        ):
+            inputs_embeds = kwargs.get("inputs_embeds")
+            if inputs_embeds is None:
+                inputs_embeds = self.get_input_embeddings()(kwargs["input_ids"])
+                kwargs["input_ids"] = None
+            kwargs["inputs_embeds"] = inputs_embeds + _dummy_vision_zero(
+                self, inputs_embeds
+            )
+        return orig_forward(self, **kwargs)
+
+    return forward
+
+
+def enable_dummy_vision_forward():
+    """With DeepSpeed ZeRO-3, a rank whose batch has no images would skip the
+    vision tower and miss its collectives while other ranks run it, deadlocking
+    NCCL. Patch the inner model forward to always run a zero-weighted vision
+    forward, at the same execution point as the real one."""
+    for cls in (Qwen2VLModel, Qwen2_5_VLModel, Qwen3VLModel, Qwen3VLMoeModel):
+        cls.forward = _make_forward_with_dummy_vision(cls.forward)
+
+
 def print_trainable_parameters_visual(self) -> None:
     """
     Prints the trainable status of all vision components including attention blocks and merger module.

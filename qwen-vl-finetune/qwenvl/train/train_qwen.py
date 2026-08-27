@@ -25,7 +25,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.append(str(project_root))
 
-from trainer import replace_qwen2_vl_attention_class
+from trainer import replace_qwen2_vl_attention_class, enable_dummy_vision_forward
 
 from transformers import (
     Qwen2VLForConditionalGeneration,
@@ -157,6 +157,8 @@ def train(attn_implementation="flash_attention_2"):
 
     if data_args.data_flatten or data_args.data_packing:
         replace_qwen2_vl_attention_class()
+    if data_args.allow_text_only:
+        enable_dummy_vision_forward()
     model.config.use_cache = False
 
     if training_args.gradient_checkpointing:

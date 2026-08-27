@@ -45,6 +45,16 @@ output_dir=./output_cpt_32b
 # Metrics reporting: "none" by default; e.g. REPORT_TO=wandb to enable
 report_to=${REPORT_TO:-"none"}
 
+# Text-only samples would make their rank skip the vision tower and miss its
+# ZeRO-3 parameter all-gathers, deadlocking NCCL. allow_text_only handles this
+# by running a zero-weighted dummy vision forward on text-only batches
+# (option 1, see enable_dummy_vision_forward in qwenvl/train/trainer.py).
+# TODO: implement and compare the alternatives:
+#   (2) batch construction that guarantees >=1 image per packed sequence
+#   (3) non-parameter-sharded parallelism (e.g. ZeRO-2), where text-only
+#       batches need no workaround
+allow_text_only=True
+
 # Training arguments
 args="
     --deepspeed ${deepspeed} \
@@ -52,6 +62,7 @@ args="
     --dataset_use ${datasets} \
     --train_on_all_tokens True \
     --data_flatten True \
+    --allow_text_only ${allow_text_only} \
     --tune_mm_vision False \
     --tune_mm_mlp True \
     --tune_mm_llm True \
