@@ -64,29 +64,46 @@ def safe_save_model_for_hf_trainer(trainer: transformers.Trainer, output_dir: st
         trainer._save(output_dir, state_dict=cpu_state_dict)  # noqa
 
 
+# transformers v5 removed the deprecated .visual/.language_model proxies from
+# the ForConditionalGeneration wrapper; they only exist on the inner .model.
+def get_visual(model):
+    return model.visual if hasattr(model, "visual") else model.model.visual
+
+
+def get_language_model(model):
+    if hasattr(model, "language_model"):
+        return model.language_model
+    return model.model.language_model
+
+
 def set_model(model_args, model):
+    visual = get_visual(model)
+    language_model = get_language_model(model)
+
     if model_args.tune_mm_vision:
-        for n, p in model.visual.named_parameters():
+        for n, p in visual.named_parameters():
             p.requires_grad = True
     else:
-        for n, p in model.visual.named_parameters():
+        for n, p in visual.named_parameters():
             p.requires_grad = False
 
     if model_args.tune_mm_mlp:
-        for n, p in model.visual.merger.named_parameters():
+        for n, p in visual.merger.named_parameters():
             p.requires_grad = True
     else:
-        for n, p in model.visual.merger.named_parameters():
+        for n, p in visual.merger.named_parameters():
             p.requires_grad = False
 
     if model_args.tune_mm_llm:
-        for n, p in model.language_model.named_parameters():
+        for n, p in language_model.named_parameters():
             p.requires_grad = True
-        model.lm_head.requires_grad = True
+        for p in model.lm_head.parameters():
+            p.requires_grad = True
     else:
-        for n, p in model.language_model.named_parameters():
+        for n, p in language_model.named_parameters():
             p.requires_grad = False
-        model.lm_head.requires_grad = False
+        for p in model.lm_head.parameters():
+            p.requires_grad = False
 
 
 def train(attn_implementation="flash_attention_2"):
@@ -179,7 +196,7 @@ def train(attn_implementation="flash_attention_2"):
         set_model(model_args, model)
 
         if torch.distributed.get_rank() == 0:
-            model.visual.print_trainable_parameters()
+            get_visual(model).print_trainable_parameters()
             model.model.print_trainable_parameters()
     
     data_module = make_supervised_data_module(processor, data_args=data_args)
