@@ -23,6 +23,8 @@ llm=${1:-${MODEL_PATH:-"Qwen/Qwen3-VL-32B-Instruct"}}
 # Training hyperparameters
 # Typical continued-pretraining LR for this scale is 1e-6 to 1e-5 depending on
 # data volume; start low if your corpus is small.
+# NOTE: flags target transformers v5 (warmup_steps <1 means warmup ratio);
+# on transformers 4.x use --warmup_ratio instead.
 lr=2e-6
 batch_size=2
 grad_accum_steps=8
@@ -64,7 +66,7 @@ args="
     --save_total_limit 2 \
     --learning_rate ${lr} \
     --weight_decay 0.01 \
-    --warmup_ratio 0.03 \
+    --warmup_steps 0.03 \
     --max_grad_norm 1 \
     --lr_scheduler_type "cosine" \
     --logging_steps 1 \
