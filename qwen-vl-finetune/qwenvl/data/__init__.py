@@ -26,12 +26,20 @@ VIDEOCHATGPT = {
     "data_path": "PATH_TO_VIDEOCHATGPT_DATA",
 }
 
+# Interleaved image-text documents produced by tools/preprocess_mint1t.py;
+# train with --train_on_all_tokens True (samples have no assistant turn)
+MINT1T = {
+    "annotation_path": "./mint1t/processed/annotations.jsonl",
+    "data_path": "./mint1t/processed",
+}
+
 data_dict = {
     "cambrian_737k": CAMBRIAN_737K,
     "cambrian_737k_pack": CAMBRIAN_737K_PACK,
     "mp_doc": MP_DOC,
     "clevr_mc": CLEVR_MC,
     "videochatgpt": VIDEOCHATGPT,
+    "mint1t": MINT1T,
 }
 
 

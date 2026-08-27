@@ -28,8 +28,9 @@ grad_accum_steps=8
 # Training entry point
 entry_file=qwenvl/train/train_qwen.py
 
-# Dataset configuration (register your corpus in qwenvl/data/__init__.py)
-datasets=${DATASETS:-"your_cpt_dataset%100"}
+# Dataset configuration (register your corpus in qwenvl/data/__init__.py;
+# mint1t is produced by tools/preprocess_mint1t.py)
+datasets=${DATASETS:-"mint1t%100"}
 
 # Output configuration
 run_name="qwen3vl-32b-cpt"
