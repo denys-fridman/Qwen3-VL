@@ -158,7 +158,7 @@ def split_long_text(text, max_words):
     return parts
 
 
-def blocks_to_samples(blocks, max_words):
+def blocks_to_samples(blocks, max_words, keep_text_only=False):
     """Chunk blocks at block boundaries so each sample fits the context budget."""
     normalized = []
     for kind, value in blocks:
@@ -183,6 +183,10 @@ def blocks_to_samples(blocks, max_words):
         if not any(kind == "text" for kind, _ in chunk):
             continue
         image_paths = [value for kind, value in chunk if kind == "image"]
+        # Text-only samples desync ZeRO-3: ranks whose batch has no images skip
+        # the vision tower and miss its parameter all-gathers, hanging NCCL.
+        if not image_paths and not keep_text_only:
+            continue
         value = "\n\n".join(
             "<image>" if kind == "image" else text for kind, text in chunk
         )
@@ -193,10 +197,10 @@ def blocks_to_samples(blocks, max_words):
     return samples
 
 
-def process_doc(doc, images_dir, timeout, max_words):
+def process_doc(doc, images_dir, timeout, max_words, keep_text_only=False):
     stats = {"images_ok": 0, "images_failed": 0}
     blocks = doc_to_blocks(doc, images_dir, timeout, stats)
-    return blocks_to_samples(blocks, max_words), stats
+    return blocks_to_samples(blocks, max_words, keep_text_only), stats
 
 
 def batched(iterable, n):
@@ -223,6 +227,12 @@ def main():
         "model_max_length after tokenization" % IMAGE_WORD_COST,
     )
     parser.add_argument("--max-docs", type=int, default=None, help="Stop after N documents (smoke tests)")
+    parser.add_argument(
+        "--keep-text-only",
+        action="store_true",
+        help="Keep samples without images (unsafe with DeepSpeed ZeRO-3: text-only "
+        "batches skip the vision tower and hang its parameter all-gathers)",
+    )
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir)
@@ -242,7 +252,10 @@ def main():
     with open(annotation_path, "w") as fout, ThreadPoolExecutor(args.num_workers) as pool:
         for batch in batched(docs, args.num_workers * 8):
             results = pool.map(
-                lambda d: process_doc(d, images_dir, args.timeout, args.max_words), batch
+                lambda d: process_doc(
+                    d, images_dir, args.timeout, args.max_words, args.keep_text_only
+                ),
+                batch,
             )
             for samples, stats in results:
                 totals["docs"] += 1
