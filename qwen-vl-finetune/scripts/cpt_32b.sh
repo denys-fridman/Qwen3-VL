@@ -13,10 +13,12 @@ NPROC_PER_NODE=${NPROC_PER_NODE:-$(nvidia-smi --list-gpus | wc -l)}
 deepspeed=./scripts/zero3.json
 
 # Model configuration
+# Usage: bash scripts/cpt_32b.sh [MODEL_PATH] [MINT1T_DATA_DIR]
+# Positional argument > env var > default.
 # HuggingFace ID or a local checkpoint path. NOTE: train_qwen.py picks the model
 # class from the path name — it must contain "qwen3", and for the dense model the
 # last path component must NOT contain the letter "a" (that selects the MoE class).
-llm=${MODEL_PATH:-"Qwen/Qwen3-VL-32B-Instruct"}
+llm=${1:-${MODEL_PATH:-"Qwen/Qwen3-VL-32B-Instruct"}}
 
 # Training hyperparameters
 # Typical continued-pretraining LR for this scale is 1e-6 to 1e-5 depending on
@@ -29,7 +31,10 @@ grad_accum_steps=8
 entry_file=qwenvl/train/train_qwen.py
 
 # Dataset configuration (register your corpus in qwenvl/data/__init__.py;
-# mint1t is produced by tools/preprocess_mint1t.py)
+# mint1t is produced by tools/preprocess_mint1t.py). MINT1T_DATA_DIR is the
+# output directory of that script and is read by qwenvl/data/__init__.py;
+# exported so the torchrun workers inherit it.
+export MINT1T_DATA_DIR=${2:-${MINT1T_DATA_DIR:-"/lustre/fsw/coreai_mlperf_training/users/dfridman/datasets/mint1t/processed"}}
 datasets=${DATASETS:-"mint1t%100"}
 
 # Output configuration

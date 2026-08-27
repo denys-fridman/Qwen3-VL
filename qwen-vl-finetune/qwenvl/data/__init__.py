@@ -1,3 +1,4 @@
+import os
 import re
 
 # Define placeholders for dataset paths
@@ -27,10 +28,12 @@ VIDEOCHATGPT = {
 }
 
 # Interleaved image-text documents produced by tools/preprocess_mint1t.py;
-# train with --train_on_all_tokens True (samples have no assistant turn)
+# train with --train_on_all_tokens True (samples have no assistant turn).
+# The directory is taken from MINT1T_DATA_DIR (set/exported by scripts/cpt_32b.sh).
+MINT1T_DATA_DIR = os.environ.get("MINT1T_DATA_DIR", "./mint1t/processed")
 MINT1T = {
-    "annotation_path": "./mint1t/processed/annotations.jsonl",
-    "data_path": "./mint1t/processed",
+    "annotation_path": os.path.join(MINT1T_DATA_DIR, "annotations.jsonl"),
+    "data_path": MINT1T_DATA_DIR,
 }
 
 data_dict = {
