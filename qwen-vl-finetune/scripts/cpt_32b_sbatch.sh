@@ -33,6 +33,9 @@ export MASTER_ADDR=$(srun --nodes=1 --ntasks=1 -w "$head_node" hostname --ip-add
 export MASTER_PORT=${MASTER_PORT:-29500}
 export NNODES=$SLURM_NNODES
 
+# Local HF checkpoint (inside the LUSTRE_DIR mount); picked up by cpt_32b.sh
+export MODEL_PATH=${MODEL_PATH:-${LUSTRE_DIR}/checkpoints/hf/Qwen3-VL-32B-Instruct}
+
 export HF_HOME=${HF_HOME:-${LUSTRE_DIR}/hf_home}
 export NCCL_MNNVL_ENABLE=0
 
