@@ -31,6 +31,8 @@ lr=2e-6
 batch_size=2
 grad_accum_steps=8
 seed=${SEED:-42}
+# Samples held out from the training data for per-epoch eval loss (0 disables)
+eval_samples=${EVAL_SAMPLES:-128}
 
 # Training entry point
 entry_file=qwenvl/train/train_qwen.py
@@ -81,10 +83,12 @@ args="
     --output_dir ${output_dir} \
     --num_train_epochs 10 \
     --per_device_train_batch_size ${batch_size} \
+    --per_device_eval_batch_size ${batch_size} \
     --gradient_accumulation_steps ${grad_accum_steps} \
     --max_pixels 50176 \
     --min_pixels 784 \
-    --eval_strategy "no" \
+    --eval_strategy "epoch" \
+    --eval_samples ${eval_samples} \
     --save_strategy "no" \
     --learning_rate ${lr} \
     --weight_decay 0.01 \

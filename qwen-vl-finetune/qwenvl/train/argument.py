@@ -38,6 +38,13 @@ class DataArguments:
     )
     data_flatten: bool = field(default=False)
     data_packing: bool = field(default=False)
+    eval_samples: int = field(
+        default=0,
+        metadata={
+            "help": "Hold out this many samples (fixed shuffle) as an eval set; "
+            "0 disables evaluation."
+        },
+    )
     base_interval: int = field(default=2)
     max_pixels: int = field(default=28 * 28 * 576)
     min_pixels: int = field(default=28 * 28 * 16)

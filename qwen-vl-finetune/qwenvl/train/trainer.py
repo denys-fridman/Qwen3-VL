@@ -293,10 +293,11 @@ def _dummy_vision_zero(model, inputs_embeds):
 
 
 def _make_forward_with_dummy_vision(orig_forward):
+    # Applies in eval as well: ZeRO-3 gathers vision params for eval forwards
+    # too, so a text-only eval batch would desync ranks just like in training.
     def forward(self, **kwargs):
         if (
-            self.training
-            and kwargs.get("pixel_values") is None
+            kwargs.get("pixel_values") is None
             and kwargs.get("pixel_values_videos") is None
         ):
             inputs_embeds = kwargs.get("inputs_embeds")

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Subset
 
 import transformers
 
@@ -688,14 +688,29 @@ class FlattenedDataCollatorForSupervisedDataset(DataCollatorForSupervisedDataset
 def make_supervised_data_module(processor, data_args) -> Dict:
     """Make dataset and collator for supervised fine-tuning."""
     train_dataset = LazySupervisedDataset(processor, data_args=data_args)
+
+    eval_dataset = None
+    eval_samples = getattr(data_args, "eval_samples", 0)
+    if eval_samples > 0:
+        eval_samples = min(eval_samples, len(train_dataset) // 2)
+        indices = list(range(len(train_dataset)))
+        # fixed shuffle so the held-out set is stable across runs and seeds
+        random.Random(2024).shuffle(indices)
+        eval_dataset = Subset(train_dataset, indices[:eval_samples])
+        train_dataset = Subset(train_dataset, indices[eval_samples:])
+        rank0_print(
+            f"holding out {eval_samples} samples for evaluation, "
+            f"{len(train_dataset)} remain for training"
+        )
+
     if data_args.data_flatten or data_args.data_packing:
         data_collator = FlattenedDataCollatorForSupervisedDataset(processor.tokenizer)
-        return dict(
-            train_dataset=train_dataset, eval_dataset=None, data_collator=data_collator
-        )
-    data_collator = DataCollatorForSupervisedDataset(processor.tokenizer)
+    else:
+        data_collator = DataCollatorForSupervisedDataset(processor.tokenizer)
     return dict(
-        train_dataset=train_dataset, eval_dataset=None, data_collator=data_collator
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        data_collator=data_collator,
     )
 
 
