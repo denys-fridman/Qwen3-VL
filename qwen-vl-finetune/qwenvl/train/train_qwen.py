@@ -125,6 +125,19 @@ def train(attn_implementation="flash_attention_2"):
     local_rank = training_args.local_rank
     os.makedirs(training_args.output_dir, exist_ok=True)
 
+    if data_args.allow_text_only and model_args.tune_mm_vision:
+        raise ValueError(
+            "allow_text_only is incompatible with tune_mm_vision: the dummy vision "
+            "forward keeps ZeRO-3 collectives aligned only while the vision tower is "
+            "frozen. With a trainable tower, ranks with real images produce deepstack-"
+            "merger gradients interleaved with LLM-layer gradients, while text-only "
+            "ranks produce all vision gradients after the LLM backward, so gradient "
+            "reduce-scatter order diverges across ranks and NCCL hangs. To train the "
+            "vision tower, use a dataset without text-only samples (preprocess without "
+            "--keep-text-only, or filter annotations.jsonl) and set allow_text_only "
+            "False."
+        )
+
     if "qwen3" in model_args.model_name_or_path.lower() and "a" in Path(model_args.model_name_or_path.rstrip("/")).name.lower():
         model = Qwen3VLMoeForConditionalGeneration.from_pretrained(
             model_args.model_name_or_path,

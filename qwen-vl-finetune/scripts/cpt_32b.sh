@@ -56,11 +56,15 @@ report_to=${REPORT_TO:-"none"}
 # ZeRO-3 parameter all-gathers, deadlocking NCCL. allow_text_only handles this
 # by running a zero-weighted dummy vision forward on text-only batches
 # (option 1, see enable_dummy_vision_forward in qwenvl/train/trainer.py).
+# LIMITATION: only valid with a frozen vision tower — with TUNE_MM_VISION=True
+# the gradient reduce-scatter order diverges across ranks and hangs, so train
+# the tower only on data with no text-only samples and ALLOW_TEXT_ONLY=False
+# (train_qwen.py enforces this).
 # TODO: implement and compare the alternatives:
 #   (2) batch construction that guarantees >=1 image per packed sequence
 #   (3) non-parameter-sharded parallelism (e.g. ZeRO-2), where text-only
 #       batches need no workaround
-allow_text_only=True
+allow_text_only=${ALLOW_TEXT_ONLY:-True}
 
 # Which components to train (default: LLM only; vision tower and projector
 # frozen). Enable more by exporting True, e.g. TUNE_MM_MLP=True.
