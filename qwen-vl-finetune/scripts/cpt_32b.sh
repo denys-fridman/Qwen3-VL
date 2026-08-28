@@ -62,6 +62,13 @@ report_to=${REPORT_TO:-"none"}
 #       batches need no workaround
 allow_text_only=True
 
+# Which components to train (default: the whole model). NOTE: the repo README
+# advises freezing the vision tower (TUNE_MM_VISION=False) when training on
+# mixed image+video data.
+tune_mm_vision=${TUNE_MM_VISION:-True}
+tune_mm_mlp=${TUNE_MM_MLP:-True}
+tune_mm_llm=${TUNE_MM_LLM:-True}
+
 # Development knob: train only the last N LLM decoder layers (plus final norm
 # and lm_head), freezing the rest. Cuts optimizer-state memory roughly in
 # proportion, e.g. LLM_LAST_N=8 fits a single node; -1 trains the full LLM.
@@ -75,9 +82,9 @@ args="
     --train_on_all_tokens True \
     --data_flatten True \
     --allow_text_only ${allow_text_only} \
-    --tune_mm_vision False \
-    --tune_mm_mlp True \
-    --tune_mm_llm True \
+    --tune_mm_vision ${tune_mm_vision} \
+    --tune_mm_mlp ${tune_mm_mlp} \
+    --tune_mm_llm ${tune_mm_llm} \
     --tune_llm_last_n_layers ${llm_last_n} \
     --bf16 \
     --output_dir ${output_dir} \
