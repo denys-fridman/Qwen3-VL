@@ -78,15 +78,13 @@ args="
     --tune_llm_last_n_layers ${llm_last_n} \
     --bf16 \
     --output_dir ${output_dir} \
-    --num_train_epochs 1 \
+    --num_train_epochs 10 \
     --per_device_train_batch_size ${batch_size} \
     --gradient_accumulation_steps ${grad_accum_steps} \
     --max_pixels 50176 \
     --min_pixels 784 \
     --eval_strategy "no" \
-    --save_strategy "steps" \
-    --save_steps 1000 \
-    --save_total_limit 2 \
+    --save_strategy "no" \
     --learning_rate ${lr} \
     --weight_decay 0.01 \
     --warmup_steps 0.03 \
