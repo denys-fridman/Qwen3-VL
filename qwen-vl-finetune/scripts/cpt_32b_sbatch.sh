@@ -21,8 +21,8 @@
 
 set -eux
 
-LUSTRE_DIR=/lustre/fsw/coreai_mlperf_training
-REPO_DIR=${LUSTRE_DIR}/users/dfridman/Qwen3-VL/qwen-vl-finetune
+LUSTRE_DIR=/lustre/fsw/coreai_mlperf_training/users/dfridman
+REPO_DIR=${LUSTRE_DIR}/Qwen3-VL/qwen-vl-finetune
 CONTAINER_IMAGE=${CONTAINER_IMAGE:?set CONTAINER_IMAGE to the training container image}
 
 # Rendezvous on the first node; cpt_32b.sh picks these up (NODE_RANK comes from
@@ -33,7 +33,7 @@ export MASTER_ADDR=$(srun --nodes=1 --ntasks=1 -w "$head_node" hostname --ip-add
 export MASTER_PORT=${MASTER_PORT:-29500}
 export NNODES=$SLURM_NNODES
 
-export HF_HOME=${HF_HOME:-${LUSTRE_DIR}/users/dfridman/hf_home}
+export HF_HOME=${HF_HOME:-${LUSTRE_DIR}/hf_home}
 export NCCL_MNNVL_ENABLE=0
 
 srun --container-image "$CONTAINER_IMAGE" \
