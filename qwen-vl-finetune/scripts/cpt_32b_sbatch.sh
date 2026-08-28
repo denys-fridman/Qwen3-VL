@@ -36,8 +36,6 @@ export NNODES=$SLURM_NNODES
 # Local HF checkpoint (inside the LUSTRE_DIR mount); picked up by cpt_32b.sh
 export MODEL_PATH=${MODEL_PATH:-${LUSTRE_DIR}/checkpoints/hf/Qwen3-VL-32B-Instruct}
 
-export NCCL_MNNVL_ENABLE=0
-
 srun --container-image "$CONTAINER_IMAGE" \
      --container-mounts "${LUSTRE_DIR}:${LUSTRE_DIR}" \
      --container-workdir "$REPO_DIR" \
