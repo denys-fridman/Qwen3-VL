@@ -3,7 +3,7 @@
 # on every node inside the training container).
 #
 # Submit:
-#   CONTAINER_IMAGE=<image> sbatch scripts/cpt_32b_sbatch.sh
+#   sbatch scripts/cpt_32b_sbatch.sh
 # Overrides (forwarded to scripts/cpt_32b.sh via the environment):
 #   MODEL_PATH=... MINT1T_DATA_DIR=... DATASETS=... LLM_LAST_N=8 REPORT_TO=wandb \
 #     CONTAINER_IMAGE=<image> sbatch --nodes=2 --partition=<p> scripts/cpt_32b_sbatch.sh
@@ -23,7 +23,7 @@ set -eux
 
 LUSTRE_DIR=/lustre/fsw/coreai_mlperf_training/users/dfridman
 REPO_DIR=${LUSTRE_DIR}/Qwen3-VL/qwen-vl-finetune
-CONTAINER_IMAGE=${CONTAINER_IMAGE:?set CONTAINER_IMAGE to the training container image}
+CONTAINER_IMAGE=${CONTAINER_IMAGE:-"gitlab-master.nvidia.com/dl/mlperf/optimized:deepseekv3_671b.pytorch.65028332"}
 
 # Rendezvous on the first node; cpt_32b.sh picks these up (NODE_RANK comes from
 # SLURM_NODEID inside each srun task)
