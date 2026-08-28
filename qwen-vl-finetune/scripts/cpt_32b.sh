@@ -62,11 +62,10 @@ report_to=${REPORT_TO:-"none"}
 #       batches need no workaround
 allow_text_only=True
 
-# Which components to train (default: the whole model). NOTE: the repo README
-# advises freezing the vision tower (TUNE_MM_VISION=False) when training on
-# mixed image+video data.
-tune_mm_vision=${TUNE_MM_VISION:-True}
-tune_mm_mlp=${TUNE_MM_MLP:-True}
+# Which components to train (default: LLM only; vision tower and projector
+# frozen). Enable more by exporting True, e.g. TUNE_MM_MLP=True.
+tune_mm_vision=${TUNE_MM_VISION:-False}
+tune_mm_mlp=${TUNE_MM_MLP:-False}
 tune_mm_llm=${TUNE_MM_LLM:-True}
 
 # Development knob: train only the last N LLM decoder layers (plus final norm

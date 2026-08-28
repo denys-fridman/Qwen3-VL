@@ -36,11 +36,11 @@ export NNODES=$SLURM_NNODES
 # Local HF checkpoint (inside the LUSTRE_DIR mount); picked up by cpt_32b.sh
 export MODEL_PATH=${MODEL_PATH:-${LUSTRE_DIR}/checkpoints/hf/Qwen3-VL-32B-Instruct}
 
-# Which components to train (defaults: whole model). Freeze parts by exporting
-# False, e.g. TUNE_MM_VISION=False; LLM_LAST_N>0 trains only the last N LLM
-# layers (development).
-export TUNE_MM_VISION=${TUNE_MM_VISION:-True}
-export TUNE_MM_MLP=${TUNE_MM_MLP:-True}
+# Which components to train (defaults: LLM only). Enable more by exporting
+# True, e.g. TUNE_MM_VISION=True TUNE_MM_MLP=True; LLM_LAST_N>0 trains only
+# the last N LLM layers (development).
+export TUNE_MM_VISION=${TUNE_MM_VISION:-False}
+export TUNE_MM_MLP=${TUNE_MM_MLP:-False}
 export TUNE_MM_LLM=${TUNE_MM_LLM:-True}
 export LLM_LAST_N=${LLM_LAST_N:--1}
 
