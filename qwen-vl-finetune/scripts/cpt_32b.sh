@@ -43,7 +43,9 @@ datasets=${DATASETS:-"mint1t%100"}
 
 # Output configuration
 run_name="qwen3vl-32b-cpt"
-output_dir=./output_cpt_32b
+# /results is container-local (not mounted): each run starts with a clean
+# output dir, and checkpoints are discarded when the job ends
+output_dir=${OUTPUT_DIR:-"/results"}
 # Metrics reporting: "none" by default; e.g. REPORT_TO=wandb to enable
 report_to=${REPORT_TO:-"none"}
 
