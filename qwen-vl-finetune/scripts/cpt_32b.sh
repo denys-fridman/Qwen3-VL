@@ -30,6 +30,7 @@ llm=${1:-${MODEL_PATH:-"Qwen/Qwen3-VL-32B-Instruct"}}
 lr=2e-6
 batch_size=2
 grad_accum_steps=8
+seed=${SEED:-42}
 
 # Training entry point
 entry_file=qwenvl/train/train_qwen.py
@@ -90,6 +91,7 @@ args="
     --warmup_steps 0.03 \
     --max_grad_norm 1 \
     --lr_scheduler_type "cosine" \
+    --seed ${seed} \
     --logging_steps 1 \
     --model_max_length 8192 \
     --gradient_checkpointing True \
