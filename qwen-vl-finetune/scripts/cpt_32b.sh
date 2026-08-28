@@ -3,10 +3,12 @@
 # from an existing checkpoint. Requires ~8x80G GPUs with ZeRO-3; switch to
 # scripts/zero3_offload.json if you hit OOM.
 
-# Distributed training configuration
+# Distributed training configuration (multi-node: set MASTER_ADDR/NNODES and
+# per-node NODE_RANK, or launch via scripts/cpt_32b_sbatch.sh under Slurm)
 MASTER_ADDR=${MASTER_ADDR:-"127.0.0.1"}
 MASTER_PORT=${MASTER_PORT:-$(shuf -i 20001-29999 -n 1)}
-NNODES=${WORLD_SIZE:-1}
+NNODES=${NNODES:-${SLURM_NNODES:-1}}
+NODE_RANK=${NODE_RANK:-${SLURM_NODEID:-0}}
 NPROC_PER_NODE=${NPROC_PER_NODE:-$(nvidia-smi --list-gpus | wc -l)}
 
 # DeepSpeed configuration
@@ -96,7 +98,9 @@ args="
     --report_to ${report_to}"
 
 # Launch training
-torchrun --nproc_per_node=${NPROC_PER_NODE} \
+torchrun --nnodes=${NNODES} \
+         --node_rank=${NODE_RANK} \
+         --nproc_per_node=${NPROC_PER_NODE} \
          --master_addr=${MASTER_ADDR} \
          --master_port=${MASTER_PORT} \
          ${entry_file} ${args}
