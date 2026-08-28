@@ -17,7 +17,7 @@
 #SBATCH --open-mode=append
 #SBATCH --output=/lustre/fsw/coreai_mlperf_training/users/dfridman/Qwen3-VL/slurm_logs/slurm_%j.out
 #SBATCH --partition=batch
-#SBATCH --time=04:00:00
+#SBATCH --time=00:20:00
 
 set -eux
 
