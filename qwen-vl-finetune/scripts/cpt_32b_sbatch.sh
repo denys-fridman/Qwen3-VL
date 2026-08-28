@@ -12,7 +12,7 @@
 #SBATCH --exclusive
 #SBATCH --job-name=coreai_mlperf_training-training.qwen3vl_32b_cpt
 #SBATCH --mem=0
-#SBATCH --nodes=1
+#SBATCH --nodes=4
 #SBATCH --ntasks-per-node=1
 #SBATCH --open-mode=append
 #SBATCH --output=/lustre/fsw/coreai_mlperf_training/users/dfridman/checkpoints/slurm_logs/slurm_%j.out
