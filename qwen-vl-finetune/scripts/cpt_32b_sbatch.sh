@@ -44,6 +44,9 @@ export TUNE_MM_MLP=${TUNE_MM_MLP:-True}
 export TUNE_MM_LLM=${TUNE_MM_LLM:-True}
 export LLM_LAST_N=${LLM_LAST_N:--1}
 
+# Peak learning rate (linear warmup to this, then cosine decay to 0)
+export LR=${LR:-2e-6}
+
 srun --container-image "$CONTAINER_IMAGE" \
      --container-mounts "${LUSTRE_DIR}:${LUSTRE_DIR}" \
      --container-workdir "$REPO_DIR" \

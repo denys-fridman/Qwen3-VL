@@ -27,7 +27,7 @@ llm=${1:-${MODEL_PATH:-"Qwen/Qwen3-VL-32B-Instruct"}}
 # data volume; start low if your corpus is small.
 # NOTE: flags target transformers v5 (warmup_steps <1 means warmup ratio);
 # on transformers 4.x use --warmup_ratio instead.
-lr=2e-6
+lr=${LR:-2e-6}
 batch_size=2
 grad_accum_steps=8
 seed=${SEED:-42}
