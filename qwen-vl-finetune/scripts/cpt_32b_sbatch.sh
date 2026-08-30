@@ -36,15 +36,18 @@ export NNODES=$SLURM_NNODES
 # Local HF checkpoint (inside the LUSTRE_DIR mount); picked up by cpt_32b.sh
 export MODEL_PATH=${MODEL_PATH:-${LUSTRE_DIR}/checkpoints/hf/Qwen3-VL-32B-Instruct}
 
-# Which components to train (defaults: LLM only). Enable more by exporting
-# True, e.g. TUNE_MM_VISION=True TUNE_MM_MLP=True; LLM_LAST_N>0 trains only
-# the last N LLM layers (development). NOTE: TUNE_MM_VISION=True requires
-# ALLOW_TEXT_ONLY=False and a dataset with no text-only samples.
-export TUNE_MM_VISION=${TUNE_MM_VISION:-False}
-export TUNE_MM_MLP=${TUNE_MM_MLP:-False}
+# Which components to train. Defaults mimic Qwen3-VL S1 (Multimodal
+# Pre-Training): whole model trainable; text-only samples are mixed in via
+# image-guaranteed batches (REQUIRE_IMAGE_PER_BATCH). LLM_LAST_N>0 trains only
+# the last N LLM layers (development). For LLM-only runs on unfiltered data:
+# TUNE_MM_VISION=False TUNE_MM_MLP=False REQUIRE_IMAGE_PER_BATCH=False
+# ALLOW_TEXT_ONLY=True.
+export TUNE_MM_VISION=${TUNE_MM_VISION:-True}
+export TUNE_MM_MLP=${TUNE_MM_MLP:-True}
 export TUNE_MM_LLM=${TUNE_MM_LLM:-True}
 export LLM_LAST_N=${LLM_LAST_N:--1}
-export ALLOW_TEXT_ONLY=${ALLOW_TEXT_ONLY:-True}
+export ALLOW_TEXT_ONLY=${ALLOW_TEXT_ONLY:-False}
+export REQUIRE_IMAGE_PER_BATCH=${REQUIRE_IMAGE_PER_BATCH:-True}
 
 # Peak learning rate (linear warmup to this, then cosine decay to 0)
 export LR=${LR:-2e-6}

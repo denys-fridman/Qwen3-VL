@@ -36,6 +36,14 @@ class DataArguments:
             "aligned across ranks."
         },
     )
+    require_image_per_batch: bool = field(
+        default=False,
+        metadata={
+            "help": "Build train batches with >=1 image sample each (and keep the "
+            "eval split image-only), so text-only data can be mixed in safely even "
+            "with a trainable vision tower under ZeRO (S1-style training)."
+        },
+    )
     data_flatten: bool = field(default=False)
     data_packing: bool = field(default=False)
     eval_samples: int = field(

@@ -41,6 +41,13 @@ def _make_abs_paths(base: Path, files: str) -> str:
     return f"{(base / files).resolve()}"
 
 
+def sample_has_visual(sample) -> bool:
+    """True if an annotation (or packed list of annotations) carries any image/video."""
+    if isinstance(sample, list):
+        return any(sample_has_visual(s) for s in sample)
+    return bool(sample.get("image") or sample.get("video"))
+
+
 def update_processor_pixels(processor, data_args):
     logger = logging.getLogger(__name__)
 
@@ -696,8 +703,20 @@ def make_supervised_data_module(processor, data_args) -> Dict:
         indices = list(range(len(train_dataset)))
         # fixed shuffle so the held-out set is stable across runs and seeds
         random.Random(2024).shuffle(indices)
-        eval_dataset = Subset(train_dataset, indices[:eval_samples])
-        train_dataset = Subset(train_dataset, indices[eval_samples:])
+        if getattr(data_args, "require_image_per_batch", False):
+            # eval batches have no image guarantee, so keep eval image-only to
+            # avoid text-only eval batches desyncing ZeRO collectives
+            candidates = [
+                i for i in indices if sample_has_visual(train_dataset.list_data_dict[i])
+            ]
+            eval_indices = candidates[:eval_samples]
+        else:
+            eval_indices = indices[:eval_samples]
+        eval_index_set = set(eval_indices)
+        eval_dataset = Subset(train_dataset, eval_indices)
+        train_dataset = Subset(
+            train_dataset, [i for i in indices if i not in eval_index_set]
+        )
         rank0_print(
             f"holding out {eval_samples} samples for evaluation, "
             f"{len(train_dataset)} remain for training"

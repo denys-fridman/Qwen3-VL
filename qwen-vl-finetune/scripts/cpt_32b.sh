@@ -53,23 +53,26 @@ output_dir=${OUTPUT_DIR:-"/results"}
 report_to=${REPORT_TO:-"none"}
 
 # Text-only samples would make their rank skip the vision tower and miss its
-# ZeRO-3 parameter all-gathers, deadlocking NCCL. allow_text_only handles this
-# by running a zero-weighted dummy vision forward on text-only batches
-# (option 1, see enable_dummy_vision_forward in qwenvl/train/trainer.py).
-# LIMITATION: only valid with a frozen vision tower — with TUNE_MM_VISION=True
-# the gradient reduce-scatter order diverges across ranks and hangs, so train
-# the tower only on data with no text-only samples and ALLOW_TEXT_ONLY=False
-# (train_qwen.py enforces this).
-# TODO: implement and compare the alternatives:
-#   (2) batch construction that guarantees >=1 image per packed sequence
-#   (3) non-parameter-sharded parallelism (e.g. ZeRO-2), where text-only
-#       batches need no workaround
-allow_text_only=${ALLOW_TEXT_ONLY:-True}
+# ZeRO-3 parameter all-gathers, deadlocking NCCL. Two implemented remedies:
+#   (1) ALLOW_TEXT_ONLY: zero-weighted dummy vision forward on text-only
+#       batches (enable_dummy_vision_forward in qwenvl/train/trainer.py).
+#       Only valid with a FROZEN vision tower — with TUNE_MM_VISION=True the
+#       gradient reduce-scatter order diverges across ranks and hangs.
+#   (2) REQUIRE_IMAGE_PER_BATCH: every train batch gets >=1 image anchor and
+#       the eval split is image-only (ImageGuaranteedBatchSampler), so the
+#       vision tower runs on real data everywhere — safe with a trainable
+#       tower; excess text-only samples are dropped per epoch. Default, for
+#       S1-style training.
+# TODO: implement and compare (3) non-parameter-sharded parallelism
+# (e.g. ZeRO-2), where text-only batches need no workaround.
+allow_text_only=${ALLOW_TEXT_ONLY:-False}
+require_image_per_batch=${REQUIRE_IMAGE_PER_BATCH:-True}
 
-# Which components to train (default: LLM only; vision tower and projector
-# frozen). Enable more by exporting True, e.g. TUNE_MM_MLP=True.
-tune_mm_vision=${TUNE_MM_VISION:-False}
-tune_mm_mlp=${TUNE_MM_MLP:-False}
+# Which components to train. Default mimics Qwen3-VL S1 (Multimodal
+# Pre-Training): all components trainable, seq len 8192, interleaved VL data
+# with text-only samples mixed in via image-guaranteed batches.
+tune_mm_vision=${TUNE_MM_VISION:-True}
+tune_mm_mlp=${TUNE_MM_MLP:-True}
 tune_mm_llm=${TUNE_MM_LLM:-True}
 
 # Development knob: train only the last N LLM decoder layers (plus final norm
@@ -85,6 +88,7 @@ args="
     --train_on_all_tokens True \
     --data_flatten True \
     --allow_text_only ${allow_text_only} \
+    --require_image_per_batch ${require_image_per_batch} \
     --tune_mm_vision ${tune_mm_vision} \
     --tune_mm_mlp ${tune_mm_mlp} \
     --tune_mm_llm ${tune_mm_llm} \

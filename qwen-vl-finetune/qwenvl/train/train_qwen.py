@@ -25,7 +25,11 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.append(str(project_root))
 
-from trainer import replace_qwen2_vl_attention_class, enable_dummy_vision_forward
+from trainer import (
+    replace_qwen2_vl_attention_class,
+    enable_dummy_vision_forward,
+    enable_image_guaranteed_batches,
+)
 
 from transformers import (
     Qwen2VLForConditionalGeneration,
@@ -125,7 +129,11 @@ def train(attn_implementation="flash_attention_2"):
     local_rank = training_args.local_rank
     os.makedirs(training_args.output_dir, exist_ok=True)
 
-    if data_args.allow_text_only and model_args.tune_mm_vision:
+    if (
+        data_args.allow_text_only
+        and model_args.tune_mm_vision
+        and not data_args.require_image_per_batch
+    ):
         raise ValueError(
             "allow_text_only is incompatible with tune_mm_vision: the dummy vision "
             "forward keeps ZeRO-3 collectives aligned only while the vision tower is "
@@ -133,9 +141,8 @@ def train(attn_implementation="flash_attention_2"):
             "merger gradients interleaved with LLM-layer gradients, while text-only "
             "ranks produce all vision gradients after the LLM backward, so gradient "
             "reduce-scatter order diverges across ranks and NCCL hangs. To train the "
-            "vision tower, use a dataset without text-only samples (preprocess without "
-            "--keep-text-only, or filter annotations.jsonl) and set allow_text_only "
-            "False."
+            "vision tower on data with text-only samples, set require_image_per_batch "
+            "True; otherwise use an image-only dataset and set allow_text_only False."
         )
 
     if "qwen3" in model_args.model_name_or_path.lower() and "a" in Path(model_args.model_name_or_path.rstrip("/")).name.lower():
@@ -180,6 +187,8 @@ def train(attn_implementation="flash_attention_2"):
         replace_qwen2_vl_attention_class()
     if data_args.allow_text_only:
         enable_dummy_vision_forward()
+    if data_args.require_image_per_batch:
+        enable_image_guaranteed_batches()
     model.config.use_cache = False
 
     if training_args.gradient_checkpointing:

@@ -1,6 +1,8 @@
+import random
 from typing import Dict, List, Optional, Sequence, Tuple, Callable
 
 import torch
+from torch.utils.data import DataLoader, Subset
 from flash_attn.flash_attn_interface import flash_attn_varlen_func
 from transformers.modeling_flash_attention_utils import FlashAttentionKwargs
 from transformers import Trainer
@@ -319,6 +321,99 @@ def enable_dummy_vision_forward():
     forward, at the same execution point as the real one."""
     for cls in (Qwen2VLModel, Qwen2_5_VLModel, Qwen3VLModel, Qwen3VLMoeModel):
         cls.forward = _make_forward_with_dummy_vision(cls.forward)
+
+
+def _split_indices_by_visual(dataset):
+    from qwenvl.data.data_processor import sample_has_visual
+
+    if isinstance(dataset, Subset):
+        annotations = dataset.dataset.list_data_dict
+        pairs = [(pos, annotations[idx]) for pos, idx in enumerate(dataset.indices)]
+    else:
+        pairs = list(enumerate(dataset.list_data_dict))
+    image_indices = [i for i, s in pairs if sample_has_visual(s)]
+    text_indices = [i for i, s in pairs if not sample_has_visual(s)]
+    return image_indices, text_indices
+
+
+class ImageGuaranteedBatchSampler(torch.utils.data.Sampler):
+    """Batches with >=1 image/video sample each, so every rank runs the vision
+    tower on real data every micro-step. This makes text-only samples safe to
+    mix in even with a trainable vision tower under ZeRO (S1-style training):
+    gradients flow through identical module paths on all ranks, so collective
+    order matches. Text-only samples fill the remaining batch slots; texts
+    beyond (batch_size - 1) per image batch are dropped for the epoch."""
+
+    def __init__(self, image_indices, text_indices, batch_size, seed=0):
+        if not image_indices:
+            raise ValueError(
+                "image-guaranteed batching requires at least one sample with images"
+            )
+        self.image_indices = list(image_indices)
+        self.text_indices = list(text_indices)
+        self.batch_size = batch_size
+        self.seed = seed
+        self.epoch = 0
+        self._iter_count = 0
+
+    def set_epoch(self, epoch):
+        self.epoch = epoch
+
+    def __len__(self):
+        total = len(self.image_indices) + len(self.text_indices)
+        return min(len(self.image_indices), total // self.batch_size)
+
+    def __iter__(self):
+        # fall back to the iteration count when nothing calls set_epoch (the
+        # accelerate wrapper does not always forward it), so every epoch still
+        # gets a fresh shuffle
+        rng = random.Random(self.seed + max(self.epoch, self._iter_count))
+        self._iter_count += 1
+
+        images = self.image_indices[:]
+        texts = self.text_indices[:]
+        rng.shuffle(images)
+        rng.shuffle(texts)
+
+        n_batches = len(self)
+        anchors = images[:n_batches]
+        pool = images[n_batches:] + texts
+        rng.shuffle(pool)
+
+        fill = self.batch_size - 1
+        batches = []
+        for b in range(n_batches):
+            batch = [anchors[b]] + pool[b * fill : (b + 1) * fill]
+            rng.shuffle(batch)
+            batches.append(batch)
+        return iter(batches)
+
+
+def image_guaranteed_get_train_dataloader(self):
+    image_indices, text_indices = _split_indices_by_visual(self.train_dataset)
+    batch_sampler = ImageGuaranteedBatchSampler(
+        image_indices, text_indices, self._train_batch_size, seed=self.args.seed
+    )
+    total = len(image_indices) + len(text_indices)
+    dropped = total - len(batch_sampler) * self._train_batch_size
+    if dropped:
+        logger.warning(
+            f"image-guaranteed batching: {len(image_indices)} image / "
+            f"{len(text_indices)} text-only samples; dropping {dropped} of {total} "
+            f"samples per epoch (each batch needs an image anchor)"
+        )
+    dataloader = DataLoader(
+        self.train_dataset,
+        batch_sampler=batch_sampler,
+        collate_fn=self.data_collator,
+        num_workers=self.args.dataloader_num_workers,
+        pin_memory=self.args.dataloader_pin_memory,
+    )
+    return self.accelerator.prepare(dataloader)
+
+
+def enable_image_guaranteed_batches():
+    Trainer.get_train_dataloader = image_guaranteed_get_train_dataloader
 
 
 def print_trainable_parameters_visual(self) -> None:
