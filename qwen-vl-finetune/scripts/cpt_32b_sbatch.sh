@@ -52,6 +52,9 @@ export REQUIRE_IMAGE_PER_BATCH=${REQUIRE_IMAGE_PER_BATCH:-True}
 # Peak learning rate (linear warmup to this, then cosine decay to 0)
 export LR=${LR:-2e-6}
 
+# Per-image pixel budget at training time (576*28*28 -> <=144 tokens/image)
+export MAX_PIXELS=${MAX_PIXELS:-451584}
+
 srun --container-image "$CONTAINER_IMAGE" \
      --container-mounts "${LUSTRE_DIR}:${LUSTRE_DIR}" \
      --container-workdir "$REPO_DIR" \

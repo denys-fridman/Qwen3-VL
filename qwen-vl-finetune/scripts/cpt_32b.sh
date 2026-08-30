@@ -31,6 +31,14 @@ lr=${LR:-2e-6}
 batch_size=2
 grad_accum_steps=8
 seed=${SEED:-42}
+# Per-image pixel budget, applied by the image processor at training time
+# (stored images keep native resolution, so changing this needs no
+# reprocessing). 451584 = 576*28*28 -> up to 144 vision tokens per image,
+# which is what the converter's IMAGE_WORD_COST=128 chunk budget covers;
+# going higher requires bumping IMAGE_WORD_COST in tools/preprocess_mint1t.py
+# and re-chunking.
+max_pixels=${MAX_PIXELS:-451584}
+min_pixels=${MIN_PIXELS:-784}
 # Samples held out from the training data for per-epoch eval loss (0 disables)
 eval_samples=${EVAL_SAMPLES:-128}
 
@@ -99,8 +107,8 @@ args="
     --per_device_train_batch_size ${batch_size} \
     --per_device_eval_batch_size ${batch_size} \
     --gradient_accumulation_steps ${grad_accum_steps} \
-    --max_pixels 50176 \
-    --min_pixels 784 \
+    --max_pixels ${max_pixels} \
+    --min_pixels ${min_pixels} \
     --eval_strategy "epoch" \
     --eval_samples ${eval_samples} \
     --save_strategy "no" \
