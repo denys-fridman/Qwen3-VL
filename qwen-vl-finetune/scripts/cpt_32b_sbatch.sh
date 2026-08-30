@@ -52,7 +52,8 @@ export REQUIRE_IMAGE_PER_BATCH=${REQUIRE_IMAGE_PER_BATCH:-True}
 # Peak learning rate (linear warmup to this, then cosine decay to 0)
 export LR=${LR:-2e-6}
 
-# Per-image pixel budget at training time (576*28*28 -> <=144 tokens/image)
+# Per-image pixel budget at training time (576*28*28 -> <=441 tokens/image;
+# keep in sync with the converter's --image-word-cost)
 export MAX_PIXELS=${MAX_PIXELS:-451584}
 
 srun --container-image "$CONTAINER_IMAGE" \

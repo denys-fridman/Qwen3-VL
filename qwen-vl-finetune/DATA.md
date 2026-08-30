@@ -43,12 +43,14 @@ with a trainable vision tower.
   2011–2024 crawl are dropped, with `<image>` tags kept aligned); training
   never touches the network. Content-hash filenames dedup identical images
   across documents.
-- **Documents are chunked to a ~5,000-word budget** (images costed at 128
-  words each) so every sample tokenizes below the 8,192 context —
-  truncating mid-image would break pixel/token alignment.
+- **Documents are chunked to a ~5,000-word budget** (images costed at 352
+  words each, sized for the training pixel budget) so every sample
+  tokenizes below the 8,192 context — truncating mid-image would break
+  pixel/token alignment.
 - **Native resolution is preserved on disk**; the per-image pixel budget
-  (default 576×28×28 ≈ 144 vision tokens) is applied at training time, so
-  resolution experiments need no reprocessing.
+  (default 576×28×28 → up to 441 vision tokens for Qwen3-VL) is applied at
+  training time. Changing it only requires re-chunking with a matching
+  `--image-word-cost` — downloaded images are reused.
 
 ## Known deltas vs. the real S1
 

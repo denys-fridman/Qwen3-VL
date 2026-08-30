@@ -32,11 +32,11 @@ batch_size=2
 grad_accum_steps=8
 seed=${SEED:-42}
 # Per-image pixel budget, applied by the image processor at training time
-# (stored images keep native resolution, so changing this needs no
-# reprocessing). 451584 = 576*28*28 -> up to 144 vision tokens per image,
-# which is what the converter's IMAGE_WORD_COST=128 chunk budget covers;
-# going higher requires bumping IMAGE_WORD_COST in tools/preprocess_mint1t.py
-# and re-chunking.
+# (stored images keep native resolution). 451584 = 576*28*28 -> up to 441
+# vision tokens per image for Qwen3-VL (one token per 32x32 pixels), which is
+# what the converter's default --image-word-cost 352 chunk budget covers.
+# Changing MAX_PIXELS requires re-chunking with a matching --image-word-cost
+# (cheap: downloaded images are reused).
 max_pixels=${MAX_PIXELS:-451584}
 min_pixels=${MIN_PIXELS:-784}
 # Samples held out from the training data for per-epoch eval loss (0 disables)

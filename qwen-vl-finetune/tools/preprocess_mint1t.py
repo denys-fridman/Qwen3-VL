@@ -48,9 +48,11 @@ except ImportError:
     tqdm = None
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; qwenvl-mint1t-preprocess)"}
-# Budget estimate per image when chunking, in "words". Covers up to
-# --max_pixels 576*28*28 (144 visual tokens); raise it if you train larger.
-IMAGE_WORD_COST = 128
+# Budget estimate per image when chunking, in "words". Qwen3-VL spends one
+# token per 32x32 pixels, so --max_pixels 576*28*28 costs up to 441 tokens
+# per image (~340 words at ~1.3 tokens/word); 352 leaves margin. Scale it
+# with --image-word-cost if you change the training max_pixels.
+IMAGE_WORD_COST = 352
 MIN_IMAGE_SIDE = 28  # below one ViT patch the processor rejects the image
 
 
@@ -158,7 +160,7 @@ def split_long_text(text, max_words):
     return parts
 
 
-def blocks_to_samples(blocks, max_words, keep_text_only=False):
+def blocks_to_samples(blocks, max_words, keep_text_only=False, image_word_cost=IMAGE_WORD_COST):
     """Chunk blocks at block boundaries so each sample fits the context budget."""
     normalized = []
     for kind, value in blocks:
@@ -169,7 +171,7 @@ def blocks_to_samples(blocks, max_words, keep_text_only=False):
 
     chunks, current, count = [], [], 0
     for kind, value in normalized:
-        cost = IMAGE_WORD_COST if kind == "image" else len(value.split())
+        cost = image_word_cost if kind == "image" else len(value.split())
         if current and count + cost > max_words:
             chunks.append(current)
             current, count = [], 0
@@ -197,10 +199,10 @@ def blocks_to_samples(blocks, max_words, keep_text_only=False):
     return samples
 
 
-def process_doc(doc, images_dir, timeout, max_words, keep_text_only=False):
+def process_doc(doc, images_dir, timeout, max_words, keep_text_only=False, image_word_cost=IMAGE_WORD_COST):
     stats = {"images_ok": 0, "images_failed": 0}
     blocks = doc_to_blocks(doc, images_dir, timeout, stats)
-    return blocks_to_samples(blocks, max_words, keep_text_only), stats
+    return blocks_to_samples(blocks, max_words, keep_text_only, image_word_cost), stats
 
 
 def batched(iterable, n):
@@ -223,8 +225,15 @@ def main():
         "--max-words",
         type=int,
         default=5000,
-        help="Word budget per output sample (images count as %d); keep it below "
-        "model_max_length after tokenization" % IMAGE_WORD_COST,
+        help="Word budget per output sample; keep it below model_max_length "
+        "after tokenization",
+    )
+    parser.add_argument(
+        "--image-word-cost",
+        type=int,
+        default=IMAGE_WORD_COST,
+        help="Word-budget cost per image when chunking; size it to the training "
+        "max_pixels (Qwen3-VL: max_pixels/1024 tokens/image, ~0.77 words/token)",
     )
     parser.add_argument("--max-docs", type=int, default=None, help="Stop after N documents (smoke tests)")
     parser.add_argument(
@@ -253,7 +262,12 @@ def main():
         for batch in batched(docs, args.num_workers * 8):
             results = pool.map(
                 lambda d: process_doc(
-                    d, images_dir, args.timeout, args.max_words, args.keep_text_only
+                    d,
+                    images_dir,
+                    args.timeout,
+                    args.max_words,
+                    args.keep_text_only,
+                    args.image_word_cost,
                 ),
                 batch,
             )
