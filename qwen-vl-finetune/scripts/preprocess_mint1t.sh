@@ -14,6 +14,7 @@ set -euo pipefail
 data_dir=${1:?usage: bash scripts/preprocess_mint1t.sh <data_dir>}
 data_files=${DATA_FILES:-"${data_dir}/data_v1_1/*.parquet"}
 num_workers=${NUM_WORKERS:-32}
+timeout=${TIMEOUT:-3}
 
 script_dir=$(dirname "$(readlink -f "$0")")
 
@@ -21,4 +22,5 @@ python "${script_dir}/../tools/preprocess_mint1t.py" \
     --data-files "${data_files}" \
     --output-dir "${data_dir}/processed" \
     --num-workers "${num_workers}" \
+    --timeout "${timeout}" \
     --keep-text-only

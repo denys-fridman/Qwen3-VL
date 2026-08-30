@@ -220,7 +220,13 @@ def main():
     )
     parser.add_argument("--output-dir", default="./mint1t/processed")
     parser.add_argument("--num-workers", type=int, default=16)
-    parser.add_argument("--timeout", type=float, default=20, help="Per-image download timeout (s)")
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=3,
+        help="Per-image download timeout (s); unresponsive hosts dominate wall "
+        "time, so keep this low on a good network",
+    )
     parser.add_argument(
         "--max-words",
         type=int,
