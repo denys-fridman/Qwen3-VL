@@ -25,7 +25,7 @@ Usage:
     python tools/preprocess_mint1t.py \
         --data-files "./mint1t/data_v1_1/*.parquet" \
         --output-dir ./mint1t/processed \
-        --num-workers 16
+        --num-workers 64
 """
 
 import argparse
@@ -219,7 +219,7 @@ def main():
         help="Glob of input shards (.parquet, .jsonl or .json)",
     )
     parser.add_argument("--output-dir", default="./mint1t/processed")
-    parser.add_argument("--num-workers", type=int, default=16)
+    parser.add_argument("--num-workers", type=int, default=64)
     parser.add_argument(
         "--timeout",
         type=float,
