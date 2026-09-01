@@ -17,7 +17,7 @@ training default, script, or pipeline behavior changes.
 | Image budget | 200,704 px (≤196 tokens/image) | `MAX_PIXELS` |
 | LR / schedule | 2e-5 peak, 3% warmup, cosine→0 | `LR` |
 | Epochs | 10 | `--num_train_epochs` |
-| Eval | 128 held-out samples, every 3 steps | `EVAL_SAMPLES`, `EVAL_STEPS` |
+| Eval | 1,024 held-out samples, every 3 steps | `EVAL_SAMPLES`, `EVAL_STEPS` |
 | Checkpointing | disabled; output to container-local `/results` | `OUTPUT_DIR` |
 | Seed | 42 | `SEED` |
 

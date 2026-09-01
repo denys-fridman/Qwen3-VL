@@ -45,7 +45,7 @@ seed=${SEED:-42}
 max_pixels=${MAX_PIXELS:-200704}
 min_pixels=${MIN_PIXELS:-784}
 # Samples held out from the training data for eval loss (0 disables)
-eval_samples=${EVAL_SAMPLES:-128}
+eval_samples=${EVAL_SAMPLES:-1024}
 # Evaluate every N optimizer steps (a float <1 works as a ratio of total steps)
 eval_steps=${EVAL_STEPS:-3}
 
