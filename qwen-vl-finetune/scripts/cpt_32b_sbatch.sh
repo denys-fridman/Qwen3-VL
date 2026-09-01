@@ -2,11 +2,13 @@
 # Slurm launcher for Qwen3-VL-32B continued pretraining (runs scripts/cpt_32b.sh
 # on every node inside the training container).
 #
-# Submit:
-#   sbatch scripts/cpt_32b_sbatch.sh
+# Submit (mode is required: "full" trains the whole model S1-style, "llm"
+# trains the language model only):
+#   sbatch scripts/cpt_32b_sbatch.sh full
+#   sbatch scripts/cpt_32b_sbatch.sh llm
 # Overrides (forwarded to scripts/cpt_32b.sh via the environment):
 #   MODEL_PATH=... MINT1T_DATA_DIR=... DATASETS=... LLM_LAST_N=8 REPORT_TO=wandb \
-#     CONTAINER_IMAGE=<image> sbatch --nodes=2 --partition=<p> scripts/cpt_32b_sbatch.sh
+#     CONTAINER_IMAGE=<image> sbatch --nodes=2 --partition=<p> scripts/cpt_32b_sbatch.sh full
 
 #SBATCH --account=coreai_mlperf_training
 #SBATCH --exclusive
@@ -20,6 +22,33 @@
 #SBATCH --time=01:00:00
 
 set -eux
+
+# Training mode: "full" (whole model, S1-style) or "llm" (LLM only)
+mode=${1:?usage: sbatch scripts/cpt_32b_sbatch.sh <full|llm>}
+case "$mode" in
+  full)
+    # Whole model trainable; text-only samples ride along safely because every
+    # batch is anchored by an image sample
+    export TUNE_MM_VISION=True
+    export TUNE_MM_MLP=True
+    export TUNE_MM_LLM=True
+    export ALLOW_TEXT_ONLY=False
+    export REQUIRE_IMAGE_PER_BATCH=True
+    ;;
+  llm)
+    # Vision tower and projector frozen; text-only batches handled by the
+    # zero-weighted dummy vision forward
+    export TUNE_MM_VISION=False
+    export TUNE_MM_MLP=False
+    export TUNE_MM_LLM=True
+    export ALLOW_TEXT_ONLY=True
+    export REQUIRE_IMAGE_PER_BATCH=False
+    ;;
+  *)
+    echo "unknown mode '$mode' (expected: full | llm)" >&2
+    exit 1
+    ;;
+esac
 
 LUSTRE_DIR=/lustre/fsw/coreai_mlperf_training/users/dfridman
 REPO_DIR=${LUSTRE_DIR}/Qwen3-VL/qwen-vl-finetune
@@ -36,18 +65,8 @@ export NNODES=$SLURM_NNODES
 # Local HF checkpoint (inside the LUSTRE_DIR mount); picked up by cpt_32b.sh
 export MODEL_PATH=${MODEL_PATH:-${LUSTRE_DIR}/checkpoints/hf/Qwen3-VL-32B-Instruct}
 
-# Which components to train. Defaults mimic Qwen3-VL S1 (Multimodal
-# Pre-Training): whole model trainable; text-only samples are mixed in via
-# image-guaranteed batches (REQUIRE_IMAGE_PER_BATCH). LLM_LAST_N>0 trains only
-# the last N LLM layers (development). For LLM-only runs on unfiltered data:
-# TUNE_MM_VISION=False TUNE_MM_MLP=False REQUIRE_IMAGE_PER_BATCH=False
-# ALLOW_TEXT_ONLY=True.
-export TUNE_MM_VISION=${TUNE_MM_VISION:-True}
-export TUNE_MM_MLP=${TUNE_MM_MLP:-True}
-export TUNE_MM_LLM=${TUNE_MM_LLM:-True}
+# LLM_LAST_N>0 trains only the last N LLM decoder layers (development)
 export LLM_LAST_N=${LLM_LAST_N:--1}
-export ALLOW_TEXT_ONLY=${ALLOW_TEXT_ONLY:-False}
-export REQUIRE_IMAGE_PER_BATCH=${REQUIRE_IMAGE_PER_BATCH:-True}
 
 # Peak learning rate (linear warmup to this, then cosine decay to 0)
 export LR=${LR:-2e-6}
