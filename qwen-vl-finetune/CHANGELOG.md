@@ -23,6 +23,10 @@ training default, script, or pipeline behavior changes.
 
 ## 2026-09-01
 
+- `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` in the sbatch env:
+  variable-length packed sequences fragment the caching allocator, a common
+  cause of OOM despite ample free memory (investigating persistent OOM at
+  micro batch 1).
 - Micro batch back to 2 (needed for the text-only filler slot in `full`
   mode); paid for by reducing `MAX_PIXELS` 451,584 → 200,704 (441 → 196
   tokens/image) — batch 2 at the larger budget OOMed because `data_flatten`

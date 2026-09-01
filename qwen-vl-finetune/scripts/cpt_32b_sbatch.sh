@@ -71,6 +71,11 @@ export LLM_LAST_N=${LLM_LAST_N:--1}
 # Peak learning rate (linear warmup to this, then cosine decay to 0)
 export LR=${LR:-2e-5}
 
+# Variable-length packed sequences allocate many differently-sized buffers,
+# which fragments the CUDA caching allocator; expandable segments avoids
+# fragmentation-induced OOM ("reserved but unallocated" in the OOM message)
+export PYTORCH_CUDA_ALLOC_CONF=${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}
+
 # Per-image pixel budget at training time (256*28*28 -> <=196 tokens/image,
 # reduced so micro batch 2 fits in memory; keep in sync with the converter's
 # --image-word-cost)
