@@ -23,6 +23,12 @@ training default, script, or pipeline behavior changes.
 
 ## 2026-09-01
 
+- **Exact token verification in preprocessing** (`--tokenizer`, wrapper env
+  `TOKENIZER`): counts each sample with the real tokenizer and drops
+  over-budget ones — the heuristic can still under-estimate rare scripts.
+  Training-side skip hardened: oversized samples skip without retries and
+  the dataset scans up to 32 neighbors (consecutive bad chunks from one
+  document previously crashed the loader).
 - **Fixed OOM from mis-chunked samples**: the converter counted whitespace
   words, so CJK/space-free text and unbroken junk (URLs, base64) produced
   chunks tokenizing to ~87k tokens, and the fp32 loss over them allocated

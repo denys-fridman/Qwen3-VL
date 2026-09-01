@@ -15,6 +15,12 @@ data_dir=${1:?usage: bash scripts/preprocess_mint1t.sh <data_dir>}
 data_files=${DATA_FILES:-"${data_dir}/data_v1_1/*.parquet"}
 num_workers=${NUM_WORKERS:-64}
 timeout=${TIMEOUT:-3}
+# Set TOKENIZER to a HF checkpoint path to verify samples with exact token
+# counts (over-budget samples are dropped); requires transformers
+tokenizer_flag=()
+if [ -n "${TOKENIZER:-}" ]; then
+    tokenizer_flag=(--tokenizer "${TOKENIZER}")
+fi
 
 script_dir=$(dirname "$(readlink -f "$0")")
 
@@ -23,4 +29,5 @@ python "${script_dir}/../tools/preprocess_mint1t.py" \
     --output-dir "${data_dir}/processed" \
     --num-workers "${num_workers}" \
     --timeout "${timeout}" \
-    --keep-text-only
+    --keep-text-only \
+    ${tokenizer_flag[@]+"${tokenizer_flag[@]}"}

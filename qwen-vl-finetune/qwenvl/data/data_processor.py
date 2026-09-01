@@ -21,6 +21,10 @@ from .rope2d import get_rope_index_25, get_rope_index_2, get_rope_index_3
 IGNORE_INDEX = -100
 IMAGE_TOKEN_INDEX = 151655
 VIDEO_TOKEN_INDEX = 151656
+
+
+class SampleTooLongError(ValueError):
+    """Deterministic per-sample failure: retrying the same index is pointless."""
 DEFAULT_IMAGE_TOKEN = "<image>"
 DEFAULT_VIDEO_TOKEN = "<video>"
 
@@ -358,49 +362,46 @@ class LazySupervisedDataset(Dataset):
             print("No pre-calculated length available.")
             return np.array([1] * len(self.list_data_dict))
 
+    def _try_item(self, index):
+        sources = self.list_data_dict[index]
+        if isinstance(sources, dict):
+            sources = [sources]
+        return self.item_fn(sources)
+
     def __getitem__(self, i) -> Dict[str, torch.Tensor]:
         num_base_retries = 3
-        num_final_retries = 30
+        num_neighbor_scan = 32
 
-        # try the current sample first
+        # try the current sample first; deterministic failures (e.g. oversized
+        # samples) skip straight to the neighbor scan
         for attempt_idx in range(num_base_retries):
             try:
-                sources = self.list_data_dict[i]
-                if isinstance(sources, dict):
-                    sources = [sources]
-                sample = self.item_fn(sources)
-                return sample
+                return self._try_item(i)
+            except SampleTooLongError as e:
+                print(f"[Skip] sample {i}: {e}")
+                break
             except Exception as e:
                 # sleep 1s in case it is a cloud disk issue
                 print(f"[Try #{attempt_idx}] Failed to fetch sample {i}. Exception:", e)
                 time.sleep(1)
 
-        # try other samples, in case it is file corruption issue
-        for attempt_idx in range(num_base_retries):
+        # substitute a nearby sample; consecutive bad samples are common (e.g.
+        # chunks of the same document), so scan forward rather than retrying
+        # one fixed neighbor
+        for offset in range(1, num_neighbor_scan):
+            next_index = (i + offset) % len(self.list_data_dict)
             try:
-                next_index = min(i + 1, len(self.list_data_dict) - 1)
-                sources = self.list_data_dict[next_index]
-                if isinstance(sources, dict):
-                    sources = [sources]
-
-                sample = self.item_fn(sources)
-                return sample
+                return self._try_item(next_index)
             except Exception as e:
-                # no need to sleep
                 print(
-                    f"[Try other #{attempt_idx}] Failed to fetch sample {next_index}. Exception:",
+                    f"[Try other #{offset}] Failed to fetch sample {next_index}. Exception:",
                     e,
                 )
-                pass
 
-        try:
-            sources = self.list_data_dict[i]
-            if isinstance(sources, dict):
-                sources = [sources]
-            sample = self.item_fn(sources)
-            return sample
-        except Exception as e:
-            raise e
+        raise RuntimeError(
+            f"no usable sample found near index {i} "
+            f"(scanned {num_neighbor_scan} neighbors)"
+        )
 
     def _get_item(self, sources) -> Dict[str, torch.Tensor]:
         data_dict = preprocess_qwen_visual(
@@ -416,7 +417,7 @@ class LazySupervisedDataset(Dataset):
         # sequence OOMs the loss computation — skip them via the retry logic.
         max_len = getattr(self.data_args, "model_max_length", None)
         if max_len and seq_len > max_len:
-            raise ValueError(
+            raise SampleTooLongError(
                 f"sample tokenizes to {seq_len} tokens (> model_max_length "
                 f"{max_len}); skipping"
             )

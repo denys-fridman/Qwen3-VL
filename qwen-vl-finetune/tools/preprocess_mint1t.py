@@ -192,8 +192,18 @@ def split_long_text(text, max_words):
     return parts
 
 
-def blocks_to_samples(blocks, max_words, keep_text_only=False, image_word_cost=IMAGE_WORD_COST):
-    """Chunk blocks at block boundaries so each sample fits the context budget."""
+def blocks_to_samples(
+    blocks,
+    max_words,
+    keep_text_only=False,
+    image_word_cost=IMAGE_WORD_COST,
+    tokenizer=None,
+):
+    """Chunk blocks at block boundaries so each sample fits the context budget.
+
+    With a tokenizer, samples are verified with exact token counts and dropped
+    if over budget (the effective_words heuristic can still under-estimate
+    pathological scripts). Returns (samples, dropped_too_long)."""
     normalized = []
     for kind, value in blocks:
         if kind == "text":
@@ -213,6 +223,8 @@ def blocks_to_samples(blocks, max_words, keep_text_only=False, image_word_cost=I
         chunks.append(current)
 
     samples = []
+    dropped_too_long = 0
+    token_budget = int(max_words * 1.3)
     for chunk in chunks:
         if not any(kind == "text" for kind, _ in chunk):
             continue
@@ -224,17 +236,35 @@ def blocks_to_samples(blocks, max_words, keep_text_only=False, image_word_cost=I
         value = "\n\n".join(
             "<image>" if kind == "image" else text for kind, text in chunk
         )
+        if tokenizer is not None:
+            text_tokens = len(tokenizer.encode(value.replace("<image>", "")))
+            image_tokens = len(image_paths) * int(image_word_cost * 1.3)
+            if text_tokens + image_tokens > token_budget:
+                dropped_too_long += 1
+                continue
         sample = {"conversations": [{"from": "human", "value": value}]}
         if image_paths:
             sample["image"] = image_paths
         samples.append(sample)
-    return samples
+    return samples, dropped_too_long
 
 
-def process_doc(doc, images_dir, timeout, max_words, keep_text_only=False, image_word_cost=IMAGE_WORD_COST):
+def process_doc(
+    doc,
+    images_dir,
+    timeout,
+    max_words,
+    keep_text_only=False,
+    image_word_cost=IMAGE_WORD_COST,
+    tokenizer=None,
+):
     stats = {"images_ok": 0, "images_failed": 0}
     blocks = doc_to_blocks(doc, images_dir, timeout, stats)
-    return blocks_to_samples(blocks, max_words, keep_text_only, image_word_cost), stats
+    samples, dropped = blocks_to_samples(
+        blocks, max_words, keep_text_only, image_word_cost, tokenizer
+    )
+    stats["samples_dropped_too_long"] = dropped
+    return samples, stats
 
 
 def batched(iterable, n):
@@ -280,12 +310,24 @@ def main():
         help="Keep samples without images (unsafe with DeepSpeed ZeRO-3: text-only "
         "batches skip the vision tower and hang its parameter all-gathers)",
     )
+    parser.add_argument(
+        "--tokenizer",
+        default=None,
+        help="HF tokenizer path/ID for exact token counting; samples over the "
+        "budget (max-words * 1.3) are dropped. Requires transformers.",
+    )
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir)
     images_dir = output_dir / "images"
     images_dir.mkdir(parents=True, exist_ok=True)
     annotation_path = output_dir / "annotations.jsonl"
+
+    tokenizer = None
+    if args.tokenizer:
+        from transformers import AutoTokenizer
+
+        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
 
     docs = iter_documents(args.data_files)
     total_docs = count_documents(args.data_files)
@@ -295,7 +337,7 @@ def main():
             total_docs = min(total_docs, args.max_docs)
 
     progress = tqdm(total=total_docs, unit="doc", dynamic_ncols=True) if tqdm else None
-    totals = {"docs": 0, "samples": 0, "images_ok": 0, "images_failed": 0}
+    totals = {"docs": 0, "samples": 0, "images_ok": 0, "images_failed": 0, "dropped_too_long": 0}
     with open(annotation_path, "w") as fout, ThreadPoolExecutor(args.num_workers) as pool:
         for batch in batched(docs, args.num_workers * 8):
             results = pool.map(
@@ -306,6 +348,7 @@ def main():
                     args.max_words,
                     args.keep_text_only,
                     args.image_word_cost,
+                    tokenizer,
                 ),
                 batch,
             )
@@ -314,6 +357,7 @@ def main():
                 totals["samples"] += len(samples)
                 totals["images_ok"] += stats["images_ok"]
                 totals["images_failed"] += stats["images_failed"]
+                totals["dropped_too_long"] += stats["samples_dropped_too_long"]
                 for sample in samples:
                     fout.write(json.dumps(sample, ensure_ascii=False) + "\n")
                 if progress:
@@ -335,6 +379,8 @@ def main():
 
     print(f"\nWrote {totals['samples']} samples to {annotation_path}")
     print(f"Images in {images_dir}: {totals['images_ok']} ok, {totals['images_failed']} failed/skipped")
+    if tokenizer is not None:
+        print(f"Samples dropped as over token budget: {totals['dropped_too_long']}")
     extra_flags = " --allow_text_only True" if args.keep_text_only else ""
     print(
         "\nRegister in qwenvl/data/__init__.py as:\n"
