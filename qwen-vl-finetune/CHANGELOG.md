@@ -23,6 +23,13 @@ training default, script, or pipeline behavior changes.
 
 ## 2026-09-01
 
+- **Fixed OOM from mis-chunked samples**: the converter counted whitespace
+  words, so CJK/space-free text and unbroken junk (URLs, base64) produced
+  chunks tokenizing to ~87k tokens, and the fp32 loss over them allocated
+  50+ GiB. The converter now uses a token-aware `effective_words` estimate
+  with character-level fallback splitting (re-chunk existing data — images
+  are reused), and the dataset skips any sample that still tokenizes past
+  `model_max_length` (truncation would break image/pixel alignment).
 - `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` in the sbatch env:
   variable-length packed sequences fragment the caching allocator, a common
   cause of OOM despite ample free memory (investigating persistent OOM at

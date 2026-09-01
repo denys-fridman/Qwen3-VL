@@ -411,6 +411,16 @@ class LazySupervisedDataset(Dataset):
 
         seq_len = data_dict["input_ids"][0].size(0)
 
+        # Oversized samples (mis-chunked CJK or unbroken junk text) cannot be
+        # truncated without breaking image/pixel alignment, and a single huge
+        # sequence OOMs the loss computation — skip them via the retry logic.
+        max_len = getattr(self.data_args, "model_max_length", None)
+        if max_len and seq_len > max_len:
+            raise ValueError(
+                f"sample tokenizes to {seq_len} tokens (> model_max_length "
+                f"{max_len}); skipping"
+            )
+
         if "image_grid_thw" in data_dict:
             grid_thw = data_dict.get("image_grid_thw")
             if not isinstance(grid_thw, Sequence):

@@ -139,19 +139,51 @@ def doc_to_blocks(doc, images_dir, timeout, stats):
     return blocks
 
 
+def effective_words(text):
+    """Token-aware word count. Plain whitespace counting under-estimates text
+    that tokenizes densely relative to its word count: CJK scripts (roughly
+    one token per character, few spaces) and unbroken junk such as URLs or
+    base64 blobs (one giant "word", thousands of BPE tokens)."""
+    words = text.split()
+    n = len(words)
+    # unbroken long words: ~3.8 chars per token for random ASCII
+    n += sum(len(w) // 5 for w in words if len(w) > 20)
+    # CJK and similar space-free scripts: ~1 token per character
+    n += int(sum(1 for ch in text if ord(ch) > 0x2E7F) * 0.9)
+    return n
+
+
+def _hard_split(text, max_words):
+    """Split one oversized paragraph: by words when possible, else by chars."""
+    words = text.split()
+    if len(words) > max_words:
+        pieces = [
+            " ".join(words[i : i + max_words]) for i in range(0, len(words), max_words)
+        ]
+    else:
+        pieces = [text]
+    out = []
+    for piece in pieces:
+        if effective_words(piece) <= max_words:
+            out.append(piece)
+        else:  # space-free text (CJK, base64): slice by characters
+            out.extend(
+                piece[i : i + max_words] for i in range(0, len(piece), max_words)
+            )
+    return out
+
+
 def split_long_text(text, max_words):
-    if len(text.split()) <= max_words:
+    if effective_words(text) <= max_words:
         return [text]
     parts, current, count = [], [], 0
     for para in text.split("\n\n"):
-        n = len(para.split())
+        n = effective_words(para)
         if current and count + n > max_words:
             parts.append("\n\n".join(current))
             current, count = [], 0
         if n > max_words:
-            words = para.split()
-            for i in range(0, len(words), max_words):
-                parts.append(" ".join(words[i : i + max_words]))
+            parts.extend(_hard_split(para, max_words))
         else:
             current.append(para)
             count += n
@@ -171,7 +203,7 @@ def blocks_to_samples(blocks, max_words, keep_text_only=False, image_word_cost=I
 
     chunks, current, count = [], [], 0
     for kind, value in normalized:
-        cost = image_word_cost if kind == "image" else len(value.split())
+        cost = image_word_cost if kind == "image" else effective_words(value)
         if current and count + cost > max_words:
             chunks.append(current)
             current, count = [], 0
