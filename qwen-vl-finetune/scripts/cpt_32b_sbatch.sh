@@ -71,9 +71,10 @@ export LLM_LAST_N=${LLM_LAST_N:--1}
 # Peak learning rate (linear warmup to this, then cosine decay to 0)
 export LR=${LR:-2e-5}
 
-# Per-image pixel budget at training time (576*28*28 -> <=441 tokens/image;
-# keep in sync with the converter's --image-word-cost)
-export MAX_PIXELS=${MAX_PIXELS:-451584}
+# Per-image pixel budget at training time (256*28*28 -> <=196 tokens/image,
+# reduced so micro batch 2 fits in memory; keep in sync with the converter's
+# --image-word-cost)
+export MAX_PIXELS=${MAX_PIXELS:-200704}
 
 srun --container-image "$CONTAINER_IMAGE" \
      --container-mounts "${LUSTRE_DIR}:${LUSTRE_DIR}" \

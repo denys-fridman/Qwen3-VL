@@ -28,20 +28,21 @@ llm=${1:-${MODEL_PATH:-"Qwen/Qwen3-VL-32B-Instruct"}}
 # NOTE: flags target transformers v5 (warmup_steps <1 means warmup ratio);
 # on transformers 4.x use --warmup_ratio instead.
 lr=${LR:-2e-5}
-# NOTE: batch_size 2 gives out-of-memory; with data_flatten the samples in a
-# micro-batch are packed into one sequence, so 2 doubles the activation
-# footprint. CAVEAT: at batch_size 1 with REQUIRE_IMAGE_PER_BATCH (full mode)
-# there is no filler slot, so text-only samples are all dropped.
-batch_size=1
+# batch_size 2 is needed in full mode: with REQUIRE_IMAGE_PER_BATCH the
+# second slot is what lets text-only samples ride along. The memory for it
+# comes from the reduced MAX_PIXELS below (batch 2 at 576*28*28 was OOM,
+# since data_flatten packs the micro-batch into one sequence).
+batch_size=2
 grad_accum_steps=8
 seed=${SEED:-42}
 # Per-image pixel budget, applied by the image processor at training time
-# (stored images keep native resolution). 451584 = 576*28*28 -> up to 441
-# vision tokens per image for Qwen3-VL (one token per 32x32 pixels), which is
-# what the converter's default --image-word-cost 352 chunk budget covers.
-# Changing MAX_PIXELS requires re-chunking with a matching --image-word-cost
-# (cheap: downloaded images are reused).
-max_pixels=${MAX_PIXELS:-451584}
+# (stored images keep native resolution). 200704 = 256*28*28 -> up to 196
+# vision tokens per image for Qwen3-VL (one token per 32x32 pixels): reduced
+# from 576*28*28 (441 tokens) to fit micro batch 2 in memory — batch 2 at the
+# larger budget OOMs. Data chunked with the converter's default
+# --image-word-cost 352 stays safely within context at either setting;
+# raising MAX_PIXELS beyond 576*28*28 requires re-chunking to match.
+max_pixels=${MAX_PIXELS:-200704}
 min_pixels=${MIN_PIXELS:-784}
 # Samples held out from the training data for eval loss (0 disables)
 eval_samples=${EVAL_SAMPLES:-128}
