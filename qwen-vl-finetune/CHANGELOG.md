@@ -23,6 +23,9 @@ training default, script, or pipeline behavior changes.
 
 ## 2026-09-01
 
+- Run-configuration banner printed by `cpt_32b.sh` on node 0 (seed, LR,
+  batch, tune flags, data, eval settings) so logs record what ran; `SEED`
+  exported explicitly by the sbatch launcher.
 - **Exact token verification in preprocessing** (`--tokenizer`, wrapper env
   `TOKENIZER`): counts each sample with the real tokenizer and drops
   over-budget ones — the heuristic can still under-estimate rare scripts.

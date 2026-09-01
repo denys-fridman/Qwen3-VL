@@ -133,6 +133,18 @@ args="
     --run_name ${run_name} \
     --report_to ${report_to}"
 
+# Run configuration banner (node 0 only) so the log records what actually ran
+if [ "${NODE_RANK}" = "0" ]; then
+    echo "=== cpt_32b run config ==="
+    echo "seed=${seed} lr=${lr} batch_size=${batch_size} grad_accum=${grad_accum_steps} nnodes=${NNODES} nproc_per_node=${NPROC_PER_NODE}"
+    echo "model=${llm}"
+    echo "data=${MINT1T_DATA_DIR} datasets=${datasets} max_pixels=${max_pixels} min_pixels=${min_pixels}"
+    echo "tune_mm_vision=${tune_mm_vision} tune_mm_mlp=${tune_mm_mlp} tune_mm_llm=${tune_mm_llm} llm_last_n=${llm_last_n}"
+    echo "allow_text_only=${allow_text_only} require_image_per_batch=${require_image_per_batch}"
+    echo "eval_samples=${eval_samples} eval_steps=${eval_steps} output_dir=${output_dir} report_to=${report_to}"
+    echo "=========================="
+fi
+
 # Launch training
 torchrun --nnodes=${NNODES} \
          --node_rank=${NODE_RANK} \

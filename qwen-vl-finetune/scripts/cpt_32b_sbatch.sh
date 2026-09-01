@@ -71,6 +71,9 @@ export LLM_LAST_N=${LLM_LAST_N:--1}
 # Peak learning rate (linear warmup to this, then cosine decay to 0)
 export LR=${LR:-2e-5}
 
+# Random seed (init, data order); e.g. SEED=1234 sbatch ... to override
+export SEED=${SEED:-42}
+
 # Variable-length packed sequences allocate many differently-sized buffers,
 # which fragments the CUDA caching allocator; expandable segments avoids
 # fragmentation-induced OOM ("reserved but unallocated" in the OOM message)
