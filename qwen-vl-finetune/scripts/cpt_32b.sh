@@ -28,7 +28,11 @@ llm=${1:-${MODEL_PATH:-"Qwen/Qwen3-VL-32B-Instruct"}}
 # NOTE: flags target transformers v5 (warmup_steps <1 means warmup ratio);
 # on transformers 4.x use --warmup_ratio instead.
 lr=${LR:-2e-6}
-batch_size=2
+# NOTE: batch_size 2 gives out-of-memory; with data_flatten the samples in a
+# micro-batch are packed into one sequence, so 2 doubles the activation
+# footprint. CAVEAT: at batch_size 1 with REQUIRE_IMAGE_PER_BATCH (full mode)
+# there is no filler slot, so text-only samples are all dropped.
+batch_size=1
 grad_accum_steps=8
 seed=${SEED:-42}
 # Per-image pixel budget, applied by the image processor at training time
