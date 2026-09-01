@@ -68,6 +68,6 @@ bash scripts/preprocess_mint1t.sh <data_dir>
 
 This downloads/validates the images and writes `annotations.jsonl` plus
 `images/` to `<data_dir>/processed`. Point training at it via
-`MINT1T_DATA_DIR=<data_dir>/processed sbatch scripts/cpt_32b_sbatch.sh`
+`MINT1T_DATA_DIR=<data_dir>/processed sbatch scripts/cpt_32b_sbatch.sh <full|llm>`
 (the default already matches
-`/lustre/fsw/coreai_mlperf_training/users/dfridman/datasets/mint1t/processed`).
+`/lustre/fsw/coreai_mlperf_training/users/dfridman/datasets/MINT-1T-HTML/processed`).

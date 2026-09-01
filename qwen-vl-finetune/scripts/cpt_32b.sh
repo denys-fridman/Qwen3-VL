@@ -49,7 +49,7 @@ entry_file=qwenvl/train/train_qwen.py
 # mint1t is produced by tools/preprocess_mint1t.py). MINT1T_DATA_DIR is the
 # output directory of that script and is read by qwenvl/data/__init__.py;
 # exported so the torchrun workers inherit it.
-export MINT1T_DATA_DIR=${2:-${MINT1T_DATA_DIR:-"/lustre/fsw/coreai_mlperf_training/users/dfridman/datasets/mint1t/processed"}}
+export MINT1T_DATA_DIR=${2:-${MINT1T_DATA_DIR:-"/lustre/fsw/coreai_mlperf_training/users/dfridman/datasets/MINT-1T-HTML/processed"}}
 datasets=${DATASETS:-"mint1t%100"}
 
 # Output configuration
