@@ -69,7 +69,7 @@ export MODEL_PATH=${MODEL_PATH:-${LUSTRE_DIR}/checkpoints/hf/Qwen3-VL-32B-Instru
 export LLM_LAST_N=${LLM_LAST_N:--1}
 
 # Peak learning rate (linear warmup to this, then cosine decay to 0)
-export LR=${LR:-2e-6}
+export LR=${LR:-2e-5}
 
 # Per-image pixel budget at training time (576*28*28 -> <=441 tokens/image;
 # keep in sync with the converter's --image-word-cost)
