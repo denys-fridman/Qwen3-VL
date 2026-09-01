@@ -39,8 +39,10 @@ seed=${SEED:-42}
 # (cheap: downloaded images are reused).
 max_pixels=${MAX_PIXELS:-451584}
 min_pixels=${MIN_PIXELS:-784}
-# Samples held out from the training data for per-epoch eval loss (0 disables)
+# Samples held out from the training data for eval loss (0 disables)
 eval_samples=${EVAL_SAMPLES:-128}
+# Evaluate every N optimizer steps (a float <1 works as a ratio of total steps)
+eval_steps=${EVAL_STEPS:-25}
 
 # Training entry point
 entry_file=qwenvl/train/train_qwen.py
@@ -109,7 +111,8 @@ args="
     --gradient_accumulation_steps ${grad_accum_steps} \
     --max_pixels ${max_pixels} \
     --min_pixels ${min_pixels} \
-    --eval_strategy "epoch" \
+    --eval_strategy "steps" \
+    --eval_steps ${eval_steps} \
     --eval_samples ${eval_samples} \
     --save_strategy "no" \
     --learning_rate ${lr} \
