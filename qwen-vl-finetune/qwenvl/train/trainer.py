@@ -659,9 +659,16 @@ _original_log = Trainer.log
 
 
 def log_with_step(self, logs, *args, **kwargs):
-    """Prepend the optimizer step to every log record (HF only includes
-    epoch), so printed train/eval lines read {'step': N, 'loss': ...}."""
-    logs = {"step": self.state.global_step, **logs}
+    """Prepend the optimizer step and the number of samples processed so far
+    (step x global batch) to every log record — HF only includes epoch — so
+    printed lines read {'step': N, 'samples': M, 'loss': ...}."""
+    step = self.state.global_step
+    global_batch = (
+        self.args.per_device_train_batch_size
+        * self.args.gradient_accumulation_steps
+        * self.args.world_size
+    )
+    logs = {"step": step, "samples": step * global_batch, **logs}
     return _original_log(self, logs, *args, **kwargs)
 
 
