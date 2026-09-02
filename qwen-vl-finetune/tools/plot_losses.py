@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Plot training and evaluation loss curves from cpt_32b Slurm logs.
+"""Plot training curves from cpt_32b Slurm logs as one 2x2 figure:
+training loss, evaluation loss, learning rate, gradient norm.
 
-Parses the HF Trainer log dicts printed by rank 0 ({'loss': ...} every
-optimizer step, {'eval_loss': ...} every eval) and the run-config banner
-(seed, tune flags) from each slurm_*.out in a directory, then writes two
-figures — one for training loss, one for evaluation loss — with one line per
-run, labeled by seed.
+Parses the HF Trainer log dicts printed by rank 0 ({'loss', 'grad_norm',
+'learning_rate', 'epoch'} every optimizer step, {'eval_loss', ...} every eval)
+and the run-config banner (seed, tune flags) from each slurm_*.out in a
+directory. One line per run, labeled by seed; the title carries the mode.
 
 Usage:
     python tools/plot_losses.py ../logs/qwen/full [--out-dir DIR] [--mode full|llm]
@@ -27,9 +27,10 @@ import matplotlib.pyplot as plt
 # beyond eight slots reuse the hues with a dashed line so identity never rests
 # on color alone.
 PALETTE = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"]
-INK, INK_MUTED, GRID = "#0b0b0b", "#898781", "#e1e0d9"
+SURFACE, INK, INK_MUTED, GRID, AXIS = "#fcfcfb", "#0b0b0b", "#898781", "#e1e0d9", "#c3c2b7"
 
 LOG_DICT = re.compile(r"\{'(?:loss|eval_loss)':.*?\}")
+TRAIN_KEYS = ("loss", "grad_norm", "learning_rate", "epoch")
 
 
 def parse_log(path):
@@ -51,11 +52,10 @@ def parse_log(path):
                 rec = ast.literal_eval(m.group(0))
             except (ValueError, SyntaxError):
                 continue
-            rec = {k: float(v) for k, v in rec.items() if k in ("loss", "eval_loss", "epoch")}
             if "loss" in rec:
-                train.append(rec)
+                train.append({k: float(rec[k]) for k in TRAIN_KEYS if k in rec})
             elif "eval_loss" in rec:
-                evals.append(rec)
+                evals.append({k: float(rec[k]) for k in ("eval_loss", "epoch") if k in rec})
     return seed, mode, train, evals
 
 
@@ -67,24 +67,24 @@ def eval_steps_from_epochs(train, evals):
 
 
 def style(ax, title, ylabel):
-    ax.set_title(title, color=INK, loc="left", fontsize=12, pad=10)
-    ax.set_xlabel("optimizer step", color=INK_MUTED)
-    ax.set_ylabel(ylabel, color=INK_MUTED)
+    ax.set_facecolor(SURFACE)
+    ax.set_title(title, color=INK, loc="left", fontsize=11, pad=8)
+    ax.set_xlabel("optimizer step", color=INK_MUTED, fontsize=9)
+    ax.set_ylabel(ylabel, color=INK_MUTED, fontsize=9)
     ax.grid(True, color=GRID, linewidth=0.8)
     ax.set_axisbelow(True)
     for side in ("top", "right"):
         ax.spines[side].set_visible(False)
     for side in ("left", "bottom"):
-        ax.spines[side].set_color("#c3c2b7")
-    ax.tick_params(colors=INK_MUTED, labelsize=9)
-    ax.legend(title="seed", frameon=False, fontsize=9, title_fontsize=9, ncol=2)
+        ax.spines[side].set_color(AXIS)
+    ax.tick_params(colors=INK_MUTED, labelsize=8)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("log_dir", help="Directory containing slurm_*.out logs")
-    parser.add_argument("--out-dir", default=None, help="Where to write PNGs (default: log_dir)")
-    parser.add_argument("--mode", default=None, help="Override the mode shown in titles (full|llm)")
+    parser.add_argument("--out-dir", default=None, help="Where to write the PNG (default: log_dir)")
+    parser.add_argument("--mode", default=None, help="Override the mode shown in the title (full|llm)")
     args = parser.parse_args()
 
     out_dir = args.out_dir or args.log_dir
@@ -105,34 +105,46 @@ def main():
         os.path.normpath(args.log_dir)
     )
 
-    fig_train, ax_train = plt.subplots(figsize=(9, 5), facecolor="#fcfcfb")
-    fig_eval, ax_eval = plt.subplots(figsize=(9, 5), facecolor="#fcfcfb")
+    fig, axes = plt.subplots(2, 2, figsize=(14, 9), facecolor=SURFACE)
+    (ax_train, ax_eval), (ax_lr, ax_gn) = axes
     for i, (seed, _, train, evals) in enumerate(runs):
         color = PALETTE[i % len(PALETTE)]
         dash = "-" if i < len(PALETTE) else "--"
         label = f"{seed}" + ("" if len(train) > 30 else f" ({len(train)} steps)")
-        steps = range(1, len(train) + 1)
-        ax_train.plot(steps, [r["loss"] for r in train], dash, color=color, linewidth=1.6, label=label)
+        steps = list(range(1, len(train) + 1))
+        line = dict(color=color, linewidth=1.5, linestyle=dash)
+
+        ax_train.plot(steps, [r["loss"] for r in train], label=label, **line)
         if evals:
             ax_eval.plot(
                 eval_steps_from_epochs(train, evals),
                 [r["eval_loss"] for r in evals],
-                dash,
-                color=color,
-                linewidth=1.6,
                 marker="o",
-                markersize=4,
-                label=label,
+                markersize=3.5,
+                **line,
             )
+        if all("learning_rate" in r for r in train):
+            ax_lr.plot(steps, [r["learning_rate"] for r in train], **line)
+        if all("grad_norm" in r for r in train):
+            ax_gn.plot(steps, [r["grad_norm"] for r in train], **line)
 
-    style(ax_train, f"Training loss — mode: {mode} ({len(runs)} runs)", "loss (per-token CE)")
-    style(ax_eval, f"Evaluation loss — mode: {mode} ({len(runs)} runs)", "eval loss (per-token CE)")
-    for fig, ax, name in ((fig_train, ax_train, "train_loss.png"), (fig_eval, ax_eval, "eval_loss.png")):
-        ax.set_facecolor("#fcfcfb")
-        fig.tight_layout()
-        path = os.path.join(out_dir, name)
-        fig.savefig(path, dpi=150)
-        print(f"wrote {path}")
+    style(ax_train, "Training loss", "loss (per-token CE)")
+    style(ax_eval, "Evaluation loss", "eval loss (per-token CE)")
+    style(ax_lr, "Learning rate", "lr")
+    style(ax_gn, "Gradient norm", "grad norm (pre-clip)")
+    ax_lr.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+
+    fig.suptitle(f"mode: {mode} — {len(runs)} runs", color=INK, fontsize=13, x=0.01, ha="left")
+    handles, labels = ax_train.get_legend_handles_labels()
+    fig.legend(
+        handles, labels, title="seed", loc="lower center", ncol=min(len(labels), 10),
+        frameon=False, fontsize=9, title_fontsize=9,
+    )
+    fig.tight_layout(rect=[0, 0.06, 1, 0.96])
+
+    path = os.path.join(out_dir, "training_curves.png")
+    fig.savefig(path, dpi=150)
+    print(f"wrote {path}")
 
 
 if __name__ == "__main__":
