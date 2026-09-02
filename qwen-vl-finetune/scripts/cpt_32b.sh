@@ -28,7 +28,7 @@ llm=${1:-${MODEL_PATH:-"Qwen/Qwen3-VL-32B-Instruct"}}
 lr=${LR:-2e-5}
 # Linear warmup length in optimizer steps (an absolute count, independent of
 # dataset size or epochs), then cosine decay to 0 over the remaining steps.
-warmup_steps=${WARMUP_STEPS:-50}
+warmup_steps=${WARMUP_STEPS:-10}
 # batch_size 2 is needed in full mode: with REQUIRE_IMAGE_PER_BATCH the
 # second slot is what lets text-only samples ride along. The memory for it
 # comes from the reduced MAX_PIXELS below (batch 2 at 576*28*28 was OOM,

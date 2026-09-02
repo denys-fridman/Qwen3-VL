@@ -15,7 +15,7 @@ training default, script, or pipeline behavior changes.
 | Micro batch / grad accum | 2 / 8 (global 1,024 samples) | `cpt_32b.sh` |
 | Sequence length | 8,192 | `--model_max_length` |
 | Image budget | 200,704 px (≤196 tokens/image) | `MAX_PIXELS` |
-| LR / schedule | 2e-5 peak, 50-step linear warmup, cosine→0 | `LR`, `WARMUP_STEPS` |
+| LR / schedule | 2e-5 peak, 10-step linear warmup, cosine→0 | `LR`, `WARMUP_STEPS` |
 | Epochs | 10 | `--num_train_epochs` |
 | Eval | 1,024 held-out samples, every 10 steps | `EVAL_SAMPLES`, `EVAL_STEPS` |
 | Checkpointing | disabled; output to container-local `/results` | `OUTPUT_DIR` |
@@ -23,7 +23,7 @@ training default, script, or pipeline behavior changes.
 
 ## 2026-09-02
 
-- Warmup specified as an absolute step count (`WARMUP_STEPS`, default 50)
+- Warmup specified as an absolute step count (`WARMUP_STEPS`, default 10)
   instead of a 3% ratio: with ~325k samples the ratio meant ~95 warmup
   steps, so the 1-hour runs (~95 steps) spent their entire budget warming up.
 - Eval hold-out split now uses the training `SEED` instead of a fixed
