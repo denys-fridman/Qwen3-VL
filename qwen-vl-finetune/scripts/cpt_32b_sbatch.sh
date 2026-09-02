@@ -69,7 +69,7 @@ export MODEL_PATH=${MODEL_PATH:-${LUSTRE_DIR}/checkpoints/hf/Qwen3-VL-32B-Instru
 export LLM_LAST_N=${LLM_LAST_N:--1}
 
 # Peak learning rate (linear warmup to this, then cosine decay to 0)
-export LR=${LR:-2e-5}
+export LR=${LR:-5e-6}
 # Warmup length in optimizer steps (absolute count)
 export WARMUP_STEPS=${WARMUP_STEPS:-10}
 # Total optimizer steps (cosine reaches 0 here; -1 = epoch-based planning)

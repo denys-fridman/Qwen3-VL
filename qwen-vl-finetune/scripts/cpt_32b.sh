@@ -25,7 +25,7 @@ llm=${1:-${MODEL_PATH:-"Qwen/Qwen3-VL-32B-Instruct"}}
 # Training hyperparameters
 # Typical continued-pretraining LR for this scale is 1e-6 to 1e-5 depending on
 # data volume; start low if your corpus is small.
-lr=${LR:-2e-5}
+lr=${LR:-5e-6}
 # Linear warmup length in optimizer steps (an absolute count, independent of
 # dataset size or epochs), then cosine decay to 0 over the remaining steps.
 warmup_steps=${WARMUP_STEPS:-10}

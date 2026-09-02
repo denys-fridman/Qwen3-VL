@@ -15,7 +15,7 @@ training default, script, or pipeline behavior changes.
 | Micro batch / grad accum | 2 / 8 (global 1,024 samples) | `cpt_32b.sh` |
 | Sequence length | 8,192 | `--model_max_length` |
 | Image budget | 200,704 px (≤196 tokens/image) | `MAX_PIXELS` |
-| LR / schedule | 2e-5 peak, 10-step linear warmup, cosine→0 | `LR`, `WARMUP_STEPS` |
+| LR / schedule | 5e-6 peak, 10-step linear warmup, cosine→0 | `LR`, `WARMUP_STEPS` |
 | Total steps | 150 (`-1` → epoch-based, 10 epochs) | `MAX_STEPS` |
 | Eval | 1,024 held-out samples, every 5 steps | `EVAL_SAMPLES`, `EVAL_STEPS` |
 | Checkpointing | disabled; output to container-local `/results` | `OUTPUT_DIR` |
@@ -23,6 +23,8 @@ training default, script, or pipeline behavior changes.
 
 ## 2026-09-02
 
+- Default LR 2e-5 → 5e-6 (early grad-norm spikes at 2e-5; upstream 32B SFT
+  uses 2e-7, our initial CPT default was 2e-6).
 - Eval cadence default 10 → 5 steps and CoV sweep step 0.025 → 0.01, for
   finer resolution of samples-to-target-loss across seeds.
 - `measure_variance.sh` now also queues `scripts/cov_analysis_sbatch.sh` with
