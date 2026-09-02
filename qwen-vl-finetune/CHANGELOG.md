@@ -9,7 +9,7 @@ training default, script, or pipeline behavior changes.
 | Setting | Value | Where |
 |---|---|---|
 | Mode | `full` \| `llm` (required arg) | `scripts/cpt_32b_sbatch.sh` |
-| Nodes / time / partition | 16 / 1h / `batch` | sbatch header |
+| Nodes / time / partition | 16 / 1h / `36x2-a01r` | sbatch header |
 | Model | `$LUSTRE/checkpoints/hf/Qwen3-VL-32B-Instruct` | `MODEL_PATH` |
 | Data | `$LUSTRE/datasets/MINT-1T-HTML/processed` | `MINT1T_DATA_DIR` |
 | Micro batch / grad accum | 2 / 8 (global 1,024 samples) | `cpt_32b.sh` |
