@@ -25,9 +25,10 @@ llm=${1:-${MODEL_PATH:-"Qwen/Qwen3-VL-32B-Instruct"}}
 # Training hyperparameters
 # Typical continued-pretraining LR for this scale is 1e-6 to 1e-5 depending on
 # data volume; start low if your corpus is small.
-# NOTE: flags target transformers v5 (warmup_steps <1 means warmup ratio);
-# on transformers 4.x use --warmup_ratio instead.
 lr=${LR:-2e-5}
+# Linear warmup length in optimizer steps (an absolute count, independent of
+# dataset size or epochs), then cosine decay to 0 over the remaining steps.
+warmup_steps=${WARMUP_STEPS:-50}
 # batch_size 2 is needed in full mode: with REQUIRE_IMAGE_PER_BATCH the
 # second slot is what lets text-only samples ride along. The memory for it
 # comes from the reduced MAX_PIXELS below (batch 2 at 576*28*28 was OOM,
@@ -122,7 +123,7 @@ args="
     --save_strategy "no" \
     --learning_rate ${lr} \
     --weight_decay 0.01 \
-    --warmup_steps 0.03 \
+    --warmup_steps ${warmup_steps} \
     --max_grad_norm 1 \
     --lr_scheduler_type "cosine" \
     --seed ${seed} \
@@ -136,7 +137,7 @@ args="
 # Run configuration banner (node 0 only) so the log records what actually ran
 if [ "${NODE_RANK}" = "0" ]; then
     echo "=== cpt_32b run config ==="
-    echo "seed=${seed} lr=${lr} batch_size=${batch_size} grad_accum=${grad_accum_steps} nnodes=${NNODES} nproc_per_node=${NPROC_PER_NODE}"
+    echo "seed=${seed} lr=${lr} warmup_steps=${warmup_steps} batch_size=${batch_size} grad_accum=${grad_accum_steps} nnodes=${NNODES} nproc_per_node=${NPROC_PER_NODE}"
     echo "model=${llm}"
     echo "data=${MINT1T_DATA_DIR} datasets=${datasets} max_pixels=${max_pixels} min_pixels=${min_pixels}"
     echo "tune_mm_vision=${tune_mm_vision} tune_mm_mlp=${tune_mm_mlp} tune_mm_llm=${tune_mm_llm} llm_last_n=${llm_last_n}"

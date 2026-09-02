@@ -70,6 +70,8 @@ export LLM_LAST_N=${LLM_LAST_N:--1}
 
 # Peak learning rate (linear warmup to this, then cosine decay to 0)
 export LR=${LR:-2e-5}
+# Warmup length in optimizer steps (absolute count)
+export WARMUP_STEPS=${WARMUP_STEPS:-50}
 
 # Random seed (init, data order); e.g. SEED=1234 sbatch ... to override
 export SEED=${SEED:-42}
