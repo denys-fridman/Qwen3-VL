@@ -16,13 +16,16 @@ training default, script, or pipeline behavior changes.
 | Sequence length | 8,192 | `--model_max_length` |
 | Image budget | 200,704 px (≤196 tokens/image) | `MAX_PIXELS` |
 | LR / schedule | 2e-5 peak, 10-step linear warmup, cosine→0 | `LR`, `WARMUP_STEPS` |
-| Epochs | 10 | `--num_train_epochs` |
+| Total steps | 200 (`-1` → epoch-based, 10 epochs) | `MAX_STEPS` |
 | Eval | 1,024 held-out samples, every 10 steps | `EVAL_SAMPLES`, `EVAL_STEPS` |
 | Checkpointing | disabled; output to container-local `/results` | `OUTPUT_DIR` |
 | Seed | 42 | `SEED` |
 
 ## 2026-09-02
 
+- `MAX_STEPS` (default 200): pins the total optimizer steps so the cosine
+  decay completes at a known step regardless of dataset size, and stops the
+  run there; `-1` restores epoch-based planning (10 epochs).
 - Warmup specified as an absolute step count (`WARMUP_STEPS`, default 10)
   instead of a 3% ratio: with ~325k samples the ratio meant ~95 warmup
   steps, so the 1-hour runs (~95 steps) spent their entire budget warming up.

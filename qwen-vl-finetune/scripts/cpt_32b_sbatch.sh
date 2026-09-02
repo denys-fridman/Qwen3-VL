@@ -72,6 +72,8 @@ export LLM_LAST_N=${LLM_LAST_N:--1}
 export LR=${LR:-2e-5}
 # Warmup length in optimizer steps (absolute count)
 export WARMUP_STEPS=${WARMUP_STEPS:-10}
+# Total optimizer steps (cosine reaches 0 here; -1 = epoch-based planning)
+export MAX_STEPS=${MAX_STEPS:-200}
 
 # Random seed (init, data order); e.g. SEED=1234 sbatch ... to override
 export SEED=${SEED:-42}

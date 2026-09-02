@@ -29,6 +29,10 @@ lr=${LR:-2e-5}
 # Linear warmup length in optimizer steps (an absolute count, independent of
 # dataset size or epochs), then cosine decay to 0 over the remaining steps.
 warmup_steps=${WARMUP_STEPS:-10}
+# Total optimizer steps: pins the cosine decay (reaches 0 at this step) and
+# stops training there, independent of dataset size. Overrides
+# --num_train_epochs; set MAX_STEPS=-1 to fall back to epoch-based planning.
+max_steps=${MAX_STEPS:-200}
 # batch_size 2 is needed in full mode: with REQUIRE_IMAGE_PER_BATCH the
 # second slot is what lets text-only samples ride along. The memory for it
 # comes from the reduced MAX_PIXELS below (batch 2 at 576*28*28 was OOM,
@@ -112,6 +116,7 @@ args="
     --bf16 \
     --output_dir ${output_dir} \
     --num_train_epochs 10 \
+    --max_steps ${max_steps} \
     --per_device_train_batch_size ${batch_size} \
     --per_device_eval_batch_size ${batch_size} \
     --gradient_accumulation_steps ${grad_accum_steps} \
@@ -137,7 +142,7 @@ args="
 # Run configuration banner (node 0 only) so the log records what actually ran
 if [ "${NODE_RANK}" = "0" ]; then
     echo "=== cpt_32b run config ==="
-    echo "seed=${seed} lr=${lr} warmup_steps=${warmup_steps} batch_size=${batch_size} grad_accum=${grad_accum_steps} nnodes=${NNODES} nproc_per_node=${NPROC_PER_NODE}"
+    echo "seed=${seed} lr=${lr} warmup_steps=${warmup_steps} max_steps=${max_steps} batch_size=${batch_size} grad_accum=${grad_accum_steps} nnodes=${NNODES} nproc_per_node=${NPROC_PER_NODE}"
     echo "model=${llm}"
     echo "data=${MINT1T_DATA_DIR} datasets=${datasets} max_pixels=${max_pixels} min_pixels=${min_pixels}"
     echo "tune_mm_vision=${tune_mm_vision} tune_mm_mlp=${tune_mm_mlp} tune_mm_llm=${tune_mm_llm} llm_last_n=${llm_last_n}"
