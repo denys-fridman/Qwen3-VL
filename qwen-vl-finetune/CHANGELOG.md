@@ -23,6 +23,8 @@ training default, script, or pipeline behavior changes.
 
 ## 2026-09-02
 
+- `plot_losses.py` x-axis is now samples processed (logged `samples` key,
+  or step × `--batch-size` [1024] for older logs).
 - Default LR 2e-5 → 5e-6 (early grad-norm spikes at 2e-5; upstream 32B SFT
   uses 2e-7, our initial CPT default was 2e-6).
 - Eval cadence default 10 → 5 steps and CoV sweep step 0.025 → 0.01, for

@@ -22,6 +22,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import matplotlib.ticker
 
 # Fixed-order categorical palette (colorblind-validated adjacent pairs). Runs
 # beyond eight slots reuse the hues with a dashed line so identity never rests
@@ -30,7 +31,9 @@ PALETTE = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4
 SURFACE, INK, INK_MUTED, GRID, AXIS = "#fcfcfb", "#0b0b0b", "#898781", "#e1e0d9", "#c3c2b7"
 
 LOG_DICT = re.compile(r"\{'[a-z_]+':.*?\}")
-TRAIN_KEYS = ("step", "loss", "grad_norm", "learning_rate", "epoch")
+TRAIN_KEYS = ("step", "samples", "loss", "grad_norm", "learning_rate", "epoch")
+EVAL_KEYS = ("step", "samples", "eval_loss", "epoch")
+DEFAULT_BATCH_SIZE = 1024  # global batch used to derive samples for logs without a 'samples' key
 
 
 def parse_log(path):
@@ -55,7 +58,7 @@ def parse_log(path):
             if "loss" in rec:
                 train.append({k: float(rec[k]) for k in TRAIN_KEYS if k in rec})
             elif "eval_loss" in rec:
-                evals.append({k: float(rec[k]) for k in ("step", "eval_loss", "epoch") if k in rec})
+                evals.append({k: float(rec[k]) for k in EVAL_KEYS if k in rec})
     return seed, mode, train, evals
 
 
@@ -75,10 +78,19 @@ def eval_steps(train, evals):
     return [bisect_right(epochs, e["epoch"] + 1e-9) for e in evals]
 
 
+def samples_axis(records, steps, batch_size):
+    """Samples processed: the logged 'samples' when present, else step x batch."""
+    if records and all("samples" in r for r in records):
+        return [int(r["samples"]) for r in records]
+    return [s * batch_size for s in steps]
+
+
 def style(ax, title, ylabel):
     ax.set_facecolor(SURFACE)
     ax.set_title(title, color=INK, loc="left", fontsize=11, pad=8)
-    ax.set_xlabel("optimizer step", color=INK_MUTED, fontsize=9)
+    ax.set_xlabel("samples processed", color=INK_MUTED, fontsize=9)
+    ax.ticklabel_format(axis="x", style="plain")
+    ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v/1000:g}k" if v else "0"))
     ax.set_ylabel(ylabel, color=INK_MUTED, fontsize=9)
     ax.grid(True, color=GRID, linewidth=0.8)
     ax.set_axisbelow(True)
@@ -94,6 +106,8 @@ def main():
     parser.add_argument("log_dir", help="Directory containing *.out Slurm logs")
     parser.add_argument("--out-dir", default=None, help="Where to write the PNG (default: log_dir)")
     parser.add_argument("--mode", default=None, help="Override the mode shown in the title (full|llm)")
+    parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE,
+                        help="Global batch size used to derive samples for logs without a 'samples' key")
     args = parser.parse_args()
 
     out_dir = args.out_dir or args.log_dir
@@ -123,22 +137,22 @@ def main():
         color = PALETTE[i % len(PALETTE)]
         dash = "-" if i < len(PALETTE) else "--"
         label = f"{seed}" + ("" if len(train) > 30 else f" ({len(train)} steps)")
-        steps = train_steps(train)
+        x_train = samples_axis(train, train_steps(train), args.batch_size)
         line = dict(color=color, linewidth=1.5, linestyle=dash)
 
-        ax_train.plot(steps, [r["loss"] for r in train], label=label, **line)
+        ax_train.plot(x_train, [r["loss"] for r in train], label=label, **line)
         if evals:
             ax_eval.plot(
-                eval_steps(train, evals),
+                samples_axis(evals, eval_steps(train, evals), args.batch_size),
                 [r["eval_loss"] for r in evals],
                 marker="o",
                 markersize=3.5,
                 **line,
             )
         if all("learning_rate" in r for r in train):
-            ax_lr.plot(steps, [r["learning_rate"] for r in train], **line)
+            ax_lr.plot(x_train, [r["learning_rate"] for r in train], **line)
         if all("grad_norm" in r for r in train):
-            ax_gn.plot(steps, [r["grad_norm"] for r in train], **line)
+            ax_gn.plot(x_train, [r["grad_norm"] for r in train], **line)
 
     style(ax_train, "Training loss", "loss (per-token CE)")
     style(ax_eval, "Evaluation loss", "eval loss (per-token CE)")
