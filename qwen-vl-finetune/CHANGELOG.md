@@ -23,6 +23,9 @@ training default, script, or pipeline behavior changes.
 
 ## 2026-09-02
 
+- Eval hold-out split now uses the training `SEED` instead of a fixed
+  constant (2024): each seed trains and evaluates on its own partition, so
+  eval losses across seeds also reflect split variance.
 - `tools/plot_losses.py`: training/eval loss figures from a directory of
   `slurm_*.out` logs (one line per run, legend = seed, title = mode).
 - **Fixed: image pixel budget was silently ignored on transformers v5.**

@@ -234,6 +234,8 @@ def train(attn_implementation="flash_attention_2"):
     # let the dataset reject samples that tokenize beyond the context length
     # (truncating them would break image/pixel alignment)
     data_args.model_max_length = training_args.model_max_length
+    # the eval hold-out split uses the same seed as training
+    data_args.eval_seed = training_args.seed
 
     data_module = make_supervised_data_module(processor, data_args=data_args)
     trainer = Trainer(
