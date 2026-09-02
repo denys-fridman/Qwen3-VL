@@ -32,7 +32,7 @@ warmup_steps=${WARMUP_STEPS:-10}
 # Total optimizer steps: pins the cosine decay (reaches 0 at this step) and
 # stops training there, independent of dataset size. Overrides
 # --num_train_epochs; set MAX_STEPS=-1 to fall back to epoch-based planning.
-max_steps=${MAX_STEPS:-200}
+max_steps=${MAX_STEPS:-150}
 # batch_size 2 is needed in full mode: with REQUIRE_IMAGE_PER_BATCH the
 # second slot is what lets text-only samples ride along. The memory for it
 # comes from the reduced MAX_PIXELS below (batch 2 at 576*28*28 was OOM,

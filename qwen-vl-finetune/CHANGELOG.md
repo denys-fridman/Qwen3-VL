@@ -9,21 +9,22 @@ training default, script, or pipeline behavior changes.
 | Setting | Value | Where |
 |---|---|---|
 | Mode | `full` \| `llm` (required arg) | `scripts/cpt_32b_sbatch.sh` |
-| Nodes / time / partition | 16 / 1h / `36x2-a01r` | sbatch header |
+| Nodes / time / partition | 16 / 1.5h / `36x2-a01r` | sbatch header |
 | Model | `$LUSTRE/checkpoints/hf/Qwen3-VL-32B-Instruct` | `MODEL_PATH` |
 | Data | `$LUSTRE/datasets/MINT-1T-HTML/processed` | `MINT1T_DATA_DIR` |
 | Micro batch / grad accum | 2 / 8 (global 1,024 samples) | `cpt_32b.sh` |
 | Sequence length | 8,192 | `--model_max_length` |
 | Image budget | 200,704 px (≤196 tokens/image) | `MAX_PIXELS` |
 | LR / schedule | 2e-5 peak, 10-step linear warmup, cosine→0 | `LR`, `WARMUP_STEPS` |
-| Total steps | 200 (`-1` → epoch-based, 10 epochs) | `MAX_STEPS` |
+| Total steps | 150 (`-1` → epoch-based, 10 epochs) | `MAX_STEPS` |
 | Eval | 1,024 held-out samples, every 10 steps | `EVAL_SAMPLES`, `EVAL_STEPS` |
 | Checkpointing | disabled; output to container-local `/results` | `OUTPUT_DIR` |
 | Seed | 42 | `SEED` |
 
 ## 2026-09-02
 
-- `MAX_STEPS` (default 200): pins the total optimizer steps so the cosine
+- `MAX_STEPS` (default 150; wall clock raised to 1.5h so the schedule
+  completes at ~38 s/step): pins the total optimizer steps so the cosine
   decay completes at a known step regardless of dataset size, and stops the
   run there; `-1` restores epoch-based planning (10 epochs).
 - Warmup specified as an absolute step count (`WARMUP_STEPS`, default 10)

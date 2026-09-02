@@ -19,7 +19,7 @@
 #SBATCH --open-mode=append
 #SBATCH --output=/lustre/fsw/coreai_mlperf_training/users/dfridman/Qwen3-VL/slurm_logs/slurm_%j.out
 #SBATCH --partition=36x2-a01r
-#SBATCH --time=01:00:00
+#SBATCH --time=01:30:00
 
 set -eux
 
@@ -73,7 +73,7 @@ export LR=${LR:-2e-5}
 # Warmup length in optimizer steps (absolute count)
 export WARMUP_STEPS=${WARMUP_STEPS:-10}
 # Total optimizer steps (cosine reaches 0 here; -1 = epoch-based planning)
-export MAX_STEPS=${MAX_STEPS:-200}
+export MAX_STEPS=${MAX_STEPS:-150}
 
 # Random seed (init, data order); e.g. SEED=1234 sbatch ... to override
 export SEED=${SEED:-42}
