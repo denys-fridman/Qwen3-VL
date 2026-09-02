@@ -23,6 +23,11 @@ training default, script, or pipeline behavior changes.
 
 ## 2026-09-02
 
+- `scripts/measure_variance.sh <full|llm> [N=10]`: launches N runs with
+  seeds 1..N; logs go to
+  `$LUSTRE/logs/multimodal/qwen/measure_variance/<timestamp>/<mode>/seed_<seed>.out`
+  (plus a `jobs.txt` seed→job-id manifest). `plot_losses.py` now accepts any
+  `*.out` files and reads the seed from the filename if the banner is absent.
 - Train/eval log records now include the optimizer `step` and `samples`
   processed so far (step x global batch; Trainer.log patched in
   `trainer.py`); `plot_losses.py` uses it when present and falls

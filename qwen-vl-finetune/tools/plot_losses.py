@@ -91,7 +91,7 @@ def style(ax, title, ylabel):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("log_dir", help="Directory containing slurm_*.out logs")
+    parser.add_argument("log_dir", help="Directory containing *.out Slurm logs")
     parser.add_argument("--out-dir", default=None, help="Where to write the PNG (default: log_dir)")
     parser.add_argument("--mode", default=None, help="Override the mode shown in the title (full|llm)")
     args = parser.parse_args()
@@ -100,12 +100,15 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
 
     runs = []
-    for path in sorted(glob.glob(os.path.join(args.log_dir, "slurm_*.out"))):
+    for path in sorted(glob.glob(os.path.join(args.log_dir, "*.out"))):
         seed, mode, train, evals = parse_log(path)
         if not train:
             print(f"skipping {os.path.basename(path)}: no training records")
             continue
-        runs.append((seed if seed is not None else os.path.basename(path), mode, train, evals))
+        if seed is None:  # fall back to a seed_<N>.out filename
+            m = re.search(r"seed_(\d+)", os.path.basename(path))
+            seed = int(m.group(1)) if m else os.path.basename(path)
+        runs.append((seed, mode, train, evals))
     if not runs:
         raise SystemExit(f"no parsable logs in {args.log_dir}")
 
