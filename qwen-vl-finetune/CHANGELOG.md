@@ -23,6 +23,11 @@ training default, script, or pipeline behavior changes.
 
 ## 2026-09-02
 
+- `measure_variance.sh` now also queues `scripts/cov_analysis_sbatch.sh` with
+  `--dependency=afterany:<all N jobs>`: once every run has terminated it runs
+  the coefficient-of-variance sweep (target loss 2.0 → 2.8, step 0.025) in
+  the container and writes `coefficient_of_variance.png`, `cov_sweep.csv`,
+  `cov_pivot.csv`, `cov_detailed.csv` and `analysis.log` next to the logs.
 - `tools/measure_coefficient_of_variance.py`: port of the MLPerf DeepSeek-V3
   `find_loss_variance.py` — samples-to-target-eval-loss statistics (mean,
   std, CV%) across seed runs, single target or loss sweep, with pivot table
