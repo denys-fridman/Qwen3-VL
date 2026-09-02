@@ -29,8 +29,8 @@ import matplotlib.pyplot as plt
 PALETTE = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"]
 SURFACE, INK, INK_MUTED, GRID, AXIS = "#fcfcfb", "#0b0b0b", "#898781", "#e1e0d9", "#c3c2b7"
 
-LOG_DICT = re.compile(r"\{'(?:loss|eval_loss)':.*?\}")
-TRAIN_KEYS = ("loss", "grad_norm", "learning_rate", "epoch")
+LOG_DICT = re.compile(r"\{'[a-z_]+':.*?\}")
+TRAIN_KEYS = ("step", "loss", "grad_norm", "learning_rate", "epoch")
 
 
 def parse_log(path):
@@ -55,13 +55,22 @@ def parse_log(path):
             if "loss" in rec:
                 train.append({k: float(rec[k]) for k in TRAIN_KEYS if k in rec})
             elif "eval_loss" in rec:
-                evals.append({k: float(rec[k]) for k in ("eval_loss", "epoch") if k in rec})
+                evals.append({k: float(rec[k]) for k in ("step", "eval_loss", "epoch") if k in rec})
     return seed, mode, train, evals
 
 
-def eval_steps_from_epochs(train, evals):
-    """Logs carry epoch but not step; training logs once per step, so the step
-    of an eval is the number of training records at or before its epoch."""
+def train_steps(train):
+    if all("step" in r for r in train):
+        return [int(r["step"]) for r in train]
+    return list(range(1, len(train) + 1))
+
+
+def eval_steps(train, evals):
+    """Prefer the logged step; older logs carry only epoch, in which case the
+    step of an eval is the number of training records at or before its epoch
+    (training logs once per step)."""
+    if all("step" in e for e in evals):
+        return [int(e["step"]) for e in evals]
     epochs = [r["epoch"] for r in train]
     return [bisect_right(epochs, e["epoch"] + 1e-9) for e in evals]
 
@@ -111,13 +120,13 @@ def main():
         color = PALETTE[i % len(PALETTE)]
         dash = "-" if i < len(PALETTE) else "--"
         label = f"{seed}" + ("" if len(train) > 30 else f" ({len(train)} steps)")
-        steps = list(range(1, len(train) + 1))
+        steps = train_steps(train)
         line = dict(color=color, linewidth=1.5, linestyle=dash)
 
         ax_train.plot(steps, [r["loss"] for r in train], label=label, **line)
         if evals:
             ax_eval.plot(
-                eval_steps_from_epochs(train, evals),
+                eval_steps(train, evals),
                 [r["eval_loss"] for r in evals],
                 marker="o",
                 markersize=3.5,

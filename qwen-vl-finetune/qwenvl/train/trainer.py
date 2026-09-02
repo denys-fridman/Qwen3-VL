@@ -655,8 +655,19 @@ def create_optimizer(self):
     return self.optimizer
 
 
+_original_log = Trainer.log
+
+
+def log_with_step(self, logs, *args, **kwargs):
+    """Prepend the optimizer step to every log record (HF only includes
+    epoch), so printed train/eval lines read {'step': N, 'loss': ...}."""
+    logs = {"step": self.state.global_step, **logs}
+    return _original_log(self, logs, *args, **kwargs)
+
+
 # Apply monkey patches
 Trainer.create_optimizer = create_optimizer
+Trainer.log = log_with_step
 
 Qwen2VisionTransformerPretrainedModel.print_trainable_parameters = (
     print_trainable_parameters_visual

@@ -23,6 +23,9 @@ training default, script, or pipeline behavior changes.
 
 ## 2026-09-02
 
+- Train/eval log records now include the optimizer `step` (Trainer.log
+  patched in `trainer.py`); `plot_losses.py` uses it when present and falls
+  back to epoch-based inference for older logs.
 - `MAX_STEPS` (default 150; wall clock raised to 1.5h so the schedule
   completes at ~38 s/step): pins the total optimizer steps so the cosine
   decay completes at a known step regardless of dataset size, and stops the
