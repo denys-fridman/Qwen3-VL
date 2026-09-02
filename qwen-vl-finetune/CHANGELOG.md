@@ -23,6 +23,12 @@ training default, script, or pipeline behavior changes.
 
 ## 2026-09-02
 
+- `tools/measure_coefficient_of_variance.py`: port of the MLPerf DeepSeek-V3
+  `find_loss_variance.py` — samples-to-target-eval-loss statistics (mean,
+  std, CV%) across seed runs, single target or loss sweep, with pivot table
+  and plot. Parses our `{'step', 'eval_loss', ...}` log records (epoch-based
+  step inference for older logs), samples = step × 1024, no iteration
+  offset, any `*.out` under the directory.
 - `scripts/measure_variance.sh <full|llm> [N=10]`: launches N runs with
   seeds 1..N; logs go to
   `$LUSTRE/logs/multimodal/qwen/measure_variance/<timestamp>/<mode>/seed_<seed>.out`
