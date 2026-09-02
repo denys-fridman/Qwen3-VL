@@ -5,8 +5,8 @@
 #
 # Usage:
 #   sbatch --output=<logs_dir>/analysis.log scripts/cov_analysis_sbatch.sh <logs_dir>
-# Writes coefficient_of_variance.png, cov_sweep.csv, cov_pivot.csv and
-# cov_detailed.csv into <logs_dir>.
+# Writes training_curves.png (tools/plot_losses.py), coefficient_of_variance.png,
+# cov_sweep.csv, cov_pivot.csv and cov_detailed.csv into <logs_dir>.
 
 #SBATCH --account=coreai_mlperf_training
 #SBATCH --job-name=coreai_mlperf_training-analysis.qwen3vl_cov
@@ -34,6 +34,7 @@ srun --container-image "$CONTAINER_IMAGE" \
      --no-container-mount-home \
      bash -c "
         python -c 'import pandas, matplotlib' 2>/dev/null || pip install --quiet pandas matplotlib
+        python tools/plot_losses.py '${logs_dir}'
         python tools/measure_coefficient_of_variance.py '${logs_dir}' \
             --sweep-range ${SWEEP_MIN} ${SWEEP_MAX} ${SWEEP_STEP} \
             --pivot-table --pivot-output cov_pivot.csv \
