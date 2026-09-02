@@ -23,6 +23,8 @@ training default, script, or pipeline behavior changes.
 
 ## 2026-09-02
 
+- `tools/plot_losses.py`: training/eval loss figures from a directory of
+  `slurm_*.out` logs (one line per run, legend = seed, title = mode).
 - **Fixed: image pixel budget was silently ignored on transformers v5.**
   `update_processor_pixels` guarded its updates on `hasattr(min_pixels)`
   and `isinstance(size, dict)`; v5 pops those attributes into a non-dict
