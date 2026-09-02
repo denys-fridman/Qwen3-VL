@@ -52,7 +52,7 @@ min_pixels=${MIN_PIXELS:-784}
 # Samples held out from the training data for eval loss (0 disables)
 eval_samples=${EVAL_SAMPLES:-1024}
 # Evaluate every N optimizer steps (a float <1 works as a ratio of total steps)
-eval_steps=${EVAL_STEPS:-10}
+eval_steps=${EVAL_STEPS:-5}
 
 # Training entry point
 entry_file=qwenvl/train/train_qwen.py

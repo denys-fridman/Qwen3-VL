@@ -23,10 +23,10 @@ LUSTRE_DIR=/lustre/fsw/coreai_mlperf_training/users/dfridman
 REPO_DIR=${LUSTRE_DIR}/Qwen3-VL/qwen-vl-finetune
 CONTAINER_IMAGE=${CONTAINER_IMAGE:-"gitlab-master.nvidia.com/dl/mlperf/optimized:deepseekv3_671b.pytorch.65028332"}
 
-# Sweep target losses 2.0 .. 2.8 in steps of 0.025
+# Sweep target losses 2.0 .. 2.8 in steps of 0.01
 SWEEP_MIN=${SWEEP_MIN:-2.0}
 SWEEP_MAX=${SWEEP_MAX:-2.8}
-SWEEP_STEP=${SWEEP_STEP:-0.025}
+SWEEP_STEP=${SWEEP_STEP:-0.01}
 
 srun --container-image "$CONTAINER_IMAGE" \
      --container-mounts "${LUSTRE_DIR}:${LUSTRE_DIR}" \
