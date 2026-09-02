@@ -21,6 +21,19 @@ training default, script, or pipeline behavior changes.
 | Checkpointing | disabled; output to container-local `/results` | `OUTPUT_DIR` |
 | Seed | 42 | `SEED` |
 
+## 2026-09-02
+
+- **Fixed: image pixel budget was silently ignored on transformers v5.**
+  `update_processor_pixels` guarded its updates on `hasattr(min_pixels)`
+  and `isinstance(size, dict)`; v5 pops those attributes into a non-dict
+  `size`, so both branches skipped and every image was processed at native
+  resolution (up to ~16.7M px, i.e. thousands of tokens per image). This is
+  the actual root cause of the oversized-sample skips, the 53 GiB
+  cross-entropy OOM, and the ZeRO-3 hang that followed a skipped image
+  anchor. The budget is now set unconditionally through every
+  representation and verified functionally at startup (a 2048x2048 probe
+  must not exceed the token limit, else training aborts). No data changes.
+
 ## 2026-09-01
 
 - Run-configuration banner printed by `cpt_32b.sh` on node 0 (seed, LR,

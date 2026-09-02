@@ -52,98 +52,66 @@ def sample_has_visual(sample) -> bool:
     return bool(sample.get("image") or sample.get("video"))
 
 
+def _set_pixel_budget(proc, min_pixels, max_pixels):
+    """Set the pixel budget on an image/video processor across transformers
+    versions. v5 folds min/max_pixels into `size` (shortest_edge/longest_edge)
+    and reads `self.size[...]` at preprocess time; 4.x also exposes
+    min_pixels/max_pixels attributes. Set every representation unconditionally
+    rather than guarding on type/attribute checks, which silently no-op on v5."""
+    size = getattr(proc, "size", None)
+    try:
+        size["shortest_edge"] = min_pixels
+        size["longest_edge"] = max_pixels
+    except Exception:
+        proc.size = {"shortest_edge": min_pixels, "longest_edge": max_pixels}
+    for attr, value in (("min_pixels", min_pixels), ("max_pixels", max_pixels)):
+        if hasattr(proc, attr):
+            setattr(proc, attr, value)
+
+
+def _verify_image_pixel_budget(ip, max_pixels):
+    """Functional check: a large synthetic image must not produce more vision
+    tokens than the budget allows. Catches processor API drift that would
+    otherwise leave images at native resolution (blowing up sequence lengths)."""
+    from PIL import Image
+
+    probe = Image.new("RGB", (2048, 2048))
+    out = ip(images=[probe], return_tensors="pt")
+    grid = out["image_grid_thw"][0]
+    merge = int(getattr(ip, "merge_size", 2))
+    patch = int(getattr(ip, "patch_size", 14))
+    tokens = int(grid.prod()) // (merge * merge)
+    limit = max_pixels // (patch * merge) ** 2
+    if tokens > limit + 1:
+        raise RuntimeError(
+            f"image pixel budget not applied: a 2048x2048 probe produced {tokens} "
+            f"vision tokens, but max_pixels={max_pixels} allows at most {limit}. "
+            f"Processor size={getattr(ip, 'size', None)}"
+        )
+    return tokens, limit
+
+
 def update_processor_pixels(processor, data_args):
-    logger = logging.getLogger(__name__)
-
-    # --- Image Processor ---
     ip = processor.image_processor
-    rank0_print("=== BEFORE IMAGE PROCESSOR PARAMETERS ===")
-    rank0_print(f"Image min_pixels: {getattr(ip, 'min_pixels', 'N/A')}")
-    rank0_print(f"Image max_pixels: {getattr(ip, 'max_pixels', 'N/A')}")
-    rank0_print(f"ip.size: {ip.size}")
-    rank0_print(f"Image size (shortest_edge): {ip.size.get('shortest_edge', 'N/A')}")
-    rank0_print(f"Image size (longest_edge):  {ip.size.get('longest_edge', 'N/A')}")
+    rank0_print(f"image processor size before: {getattr(ip, 'size', None)}")
+    _set_pixel_budget(ip, data_args.min_pixels, data_args.max_pixels)
+    tokens, limit = _verify_image_pixel_budget(ip, data_args.max_pixels)
+    rank0_print(
+        f"image processor size after: {getattr(ip, 'size', None)} "
+        f"(2048x2048 probe -> {tokens} vision tokens, budget allows {limit})"
+    )
 
-    if hasattr(ip, "min_pixels") and hasattr(ip, "max_pixels"):
-        ip.min_pixels = data_args.min_pixels
-        ip.max_pixels = data_args.max_pixels
-        rank0_print(f"✅ Updated image_processor min_pixels to {data_args.min_pixels}")
-        rank0_print(f"✅ Updated image_processor max_pixels to {data_args.max_pixels}")
-
-    if hasattr(ip, "size") and isinstance(ip.size, dict):
-        ip.size["shortest_edge"] = data_args.min_pixels
-        ip.size["longest_edge"] = data_args.max_pixels
-        rank0_print(
-            f"✅ Updated image_processor size['shortest_edge'] to {data_args.min_pixels}"
-        )
-        rank0_print(
-            f"✅ Updated image_processor size['longest_edge'] to {data_args.max_pixels}"
-        )
-
-    rank0_print("=== AFTER IMAGE PROCESSOR PARAMETERS ===")
-    rank0_print(f"Image min_pixels: {getattr(ip, 'min_pixels', 'N/A')}")
-    rank0_print(f"Image max_pixels: {getattr(ip, 'max_pixels', 'N/A')}")
-    rank0_print(f"Image size (shortest_edge): {ip.size.get('shortest_edge', 'N/A')}")
-    rank0_print(f"Image size (longest_edge):  {ip.size.get('longest_edge', 'N/A')}")
-
-    # --- Video Processor ---
-    if hasattr(processor, "video_processor") and processor.video_processor is not None:
-        vp = processor.video_processor
-        rank0_print("\n=== BEFORE VIDEO PROCESSOR PARAMETERS ===")
-        rank0_print(f"Video min_pixels: {getattr(vp, 'min_pixels', 'N/A')}")
-        rank0_print(f"Video max_pixels: {getattr(vp, 'max_pixels', 'N/A')}")
-        rank0_print(f"Video min_frames: {getattr(vp, 'min_frames', 'N/A')}")
-        rank0_print(f"Video max_frames: {getattr(vp, 'max_frames', 'N/A')}")
-        rank0_print(f"Video fps: {getattr(vp, 'fps', 'N/A')}")
-        rank0_print(
-            f"Video size (shortest_edge): {vp.size.get('shortest_edge', 'N/A')}"
-        )
-        rank0_print(f"Video size (longest_edge):  {vp.size.get('longest_edge', 'N/A')}")
-
-        if hasattr(vp, "min_pixels") and hasattr(vp, "max_pixels"):
-            vp.min_pixels = data_args.video_min_pixels
-            vp.max_pixels = data_args.video_max_pixels
-            rank0_print(
-                f"✅ Updated Qwen2-VL video_processor min_pixels to {data_args.video_min_pixels}"
-            )
-            rank0_print(
-                f"✅ Updated Qwen2-VL video_processor max_pixels to {data_args.video_max_pixels}"
-            )
-
-        if hasattr(vp, "min_frames") and hasattr(vp, "max_frames"):
-            vp.min_frames = data_args.video_min_frames
-            vp.max_frames = data_args.video_max_frames
-            rank0_print(
-                f"✅ Updated video_processor min_frames to {data_args.video_min_frames}"
-            )
-            rank0_print(
-                f"✅ Updated video_processor max_frames to {data_args.video_max_frames}"
-            )
-
-        if hasattr(vp, "fps"):
-            vp.fps = data_args.video_fps
-            rank0_print(f"✅ Updated video_processor fps to {data_args.video_fps}")
-
-        if hasattr(vp, "size") and isinstance(vp.size, dict):
-            vp.size["shortest_edge"] = data_args.video_min_pixels
-            vp.size["longest_edge"] = data_args.video_max_pixels
-            rank0_print(
-                f"✅ Updated Video size (shortest_edge): {vp.size.get('shortest_edge', 'N/A')}"
-            )
-            rank0_print(
-                f"✅ Updated Video size (longest_edge):  {vp.size.get('longest_edge', 'N/A')}"
-            )
-
-        rank0_print("=== AFTER VIDEO PROCESSOR PARAMETERS ===")
-        rank0_print(f"Video min_pixels: {getattr(vp, 'min_pixels', 'N/A')}")
-        rank0_print(f"Video max_pixels: {getattr(vp, 'max_pixels', 'N/A')}")
-        rank0_print(f"Video min_frames: {getattr(vp, 'min_frames', 'N/A')}")
-        rank0_print(f"Video max_frames: {getattr(vp, 'max_frames', 'N/A')}")
-        rank0_print(f"Video fps: {getattr(vp, 'fps', 'N/A')}")
-        rank0_print(
-            f"Video size (shortest_edge): {vp.size.get('shortest_edge', 'N/A')}"
-        )
-        rank0_print(f"Video size (longest_edge):  {vp.size.get('longest_edge', 'N/A')}")
+    vp = getattr(processor, "video_processor", None)
+    if vp is not None:
+        _set_pixel_budget(vp, data_args.video_min_pixels, data_args.video_max_pixels)
+        for attr, value in (
+            ("min_frames", data_args.video_min_frames),
+            ("max_frames", data_args.video_max_frames),
+            ("fps", data_args.video_fps),
+        ):
+            if hasattr(vp, attr):
+                setattr(vp, attr, value)
+        rank0_print(f"video processor size after: {getattr(vp, 'size', None)}")
 
     return processor
 
