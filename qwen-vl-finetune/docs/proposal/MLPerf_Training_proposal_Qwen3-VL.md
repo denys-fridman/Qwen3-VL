@@ -115,16 +115,29 @@ matters for a benchmark that should reflect what the community actually
 trains and deploys. As of 2026-09-09 (Hugging Face API; "derivatives" are
 Hub repositories declaring the model as their base):
 
-| Model | Released | Params | Downloads, all time | Downloads, last 30 days | Fine-tunes | Adapters | Quantized |
-|---|---|---|---|---|---|---|---|
-| **Qwen3-VL-32B-Instruct** | 2025-10 | 33.4B | **17.1M** | **401k** | 65 | 15 | 49 |
-| Gemma 3 27B (it) | 2025-03 | 27.4B | 16.9M | 371k | 448 | 259 | 144 |
-| Mistral Small 3.2 24B Instruct | 2025-06 | 24.0B | 5.2M | 128k | 65 | 15 | 69 |
-| Mistral Small 3.1 24B Instruct | 2025-03 | 24.0B | 4.1M | 241k | 58 | 12 | 64 |
-| InternVL3-38B | 2025-04 | 38.4B | 1.3M | 2k | 6 | 0 | 3 |
-| InternVL3.5-38B | 2025-08 | 38.4B | 0.3M | 20k | 6 | 0 | 7 |
-| Ovis2-34B | 2025-02 | 34.9B | 0.1M | 0.2k | 0 | 0 | 0 |
-| Aya Vision 32B | 2025-03 | 33.1B | 6.5k | 0.5k | 1 | 3 | 2 |
+| Model | Released | Params | Downloads, all time | Downloads, last 30 days |
+|---|---|---|---|---|
+| **Qwen3-VL-32B-Instruct** | 2025-10 | 33.4B | **17.1M** | **401k** |
+| Gemma 3 27B (it) | 2025-03 | 27.4B | 16.9M | 371k |
+| Mistral Small 3.2 24B | 2025-06 | 24.0B | 5.2M | 128k |
+| Mistral Small 3.1 24B | 2025-03 | 24.0B | 4.1M | 241k |
+| InternVL3-38B | 2025-04 | 38.4B | 1.3M | 2k |
+| InternVL3.5-38B | 2025-08 | 38.4B | 0.3M | 20k |
+| Ovis2-34B | 2025-02 | 34.9B | 0.1M | 0.2k |
+| Aya Vision 32B | 2025-03 | 33.1B | 6.5k | 0.5k |
+
+Derivatives on the Hub, same date:
+
+| Model | Fine-tunes | Adapters | Quantized versions |
+|---|---|---|---|
+| **Qwen3-VL-32B-Instruct** | 65 | 15 | 49 |
+| Gemma 3 27B (it) | 448 | 259 | 144 |
+| Mistral Small 3.2 24B | 65 | 15 | 69 |
+| Mistral Small 3.1 24B | 58 | 12 | 64 |
+| InternVL3-38B | 6 | 0 | 3 |
+| InternVL3.5-38B | 6 | 0 | 7 |
+| Ovis2-34B | 0 | 0 | 0 |
+| Aya Vision 32B | 1 | 3 | 2 |
 
 Gemma 3 27B — seven months older and widely used as a text-only model as
 well — has the larger derivative tree; Qwen3-VL-32B matches the Mistral Small

@@ -85,19 +85,48 @@ def set_numbering(paragraph, num_id, level=0):
     paragraph._p.get_or_add_pPr().append(num_pr)
 
 
-def add_table(doc, rows):
+def add_table(doc, rows, total_width=Inches(6.5)):
     cells = [[c.strip() for c in r.strip().strip("|").split("|")] for r in rows]
     width = max(len(r) for r in cells)
     table = doc.add_table(rows=len(cells), cols=width)
     table.style = "Table Grid"
+    table.autofit = False
+    font_size = Pt(8) if width > 6 else Pt(9)
+
+    # Column widths: each column gets at least the rendered width of its longest
+    # word (so headers don't break mid-word); remaining width is shared in
+    # proportion to the longest cell text. Falls back to proportional scaling
+    # when even the minimums don't fit.
+    def longest(j, whole_cell):
+        texts = [re.sub(r"[*`]", "", r[j]) for r in cells if j < len(r)]
+        if not whole_cell:
+            texts = [w for t in texts for w in t.split()]
+        return max((len(t) for t in texts), default=1)
+
+    char_width = 0.08 if font_size == Pt(8) else 0.09  # inches per bold character (approx.)
+    total_in = total_width / 914400  # EMU -> inches
+    minimums = [longest(j, False) * char_width + 0.16 for j in range(width)]
+    if sum(minimums) <= total_in:
+        full = [longest(j, True) for j in range(width)]
+        extra = total_in - sum(minimums)
+        widths_in = [m + extra * f / sum(full) for m, f in zip(minimums, full)]
+    else:
+        widths_in = [total_in * m / sum(minimums) for m in minimums]
+    col_widths = [Inches(w) for w in widths_in]
+    for j, col_width in enumerate(col_widths):
+        table.columns[j].width = col_width  # grid widths: honored by LibreOffice/Docs
+
     for i, row in enumerate(cells):
+        tr_pr = table.rows[i]._tr.get_or_add_trPr()
+        tr_pr.append(OxmlElement("w:cantSplit"))  # keep a row on one page
         for j in range(width):
             cell = table.cell(i, j)
+            cell.width = col_widths[j]
             cell.text = ""
             para = cell.paragraphs[0]
             add_inline(para, row[j] if j < len(row) else "")
             for run in para.runs:
-                run.font.size = Pt(9)
+                run.font.size = font_size
                 if i == 0:
                     run.bold = True
     doc.add_paragraph()
@@ -140,7 +169,8 @@ def flush_paragraph(doc, lines, base_dir, state):
 def convert(md_path, out_path):
     doc = Document()
     for section in doc.sections:
-        section.left_margin = section.right_margin = Inches(1)
+        section.left_margin = section.right_margin = Inches(0.75)
+    text_width = doc.sections[0].page_width - doc.sections[0].left_margin - doc.sections[0].right_margin
     base_dir = md_path.parent
     lines = md_path.read_text().splitlines()
 
@@ -155,7 +185,7 @@ def convert(md_path, out_path):
                 table.append(stripped)
             continue
         if table:
-            add_table(doc, table)
+            add_table(doc, table, text_width)
             table = []
             state["num_id"] = None
         if not stripped:
@@ -173,7 +203,7 @@ def convert(md_path, out_path):
         else:
             para.append(line)
     if table:
-        add_table(doc, table)
+        add_table(doc, table, text_width)
     flush_paragraph(doc, para, base_dir, state)
     doc.save(out_path)
 
