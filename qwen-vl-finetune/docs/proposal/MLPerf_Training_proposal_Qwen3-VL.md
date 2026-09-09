@@ -190,13 +190,17 @@ denser evaluation near the target would tighten them further.
 |---|---|
 | Compute budget | 64–96 GB200 GPU-hours per run (goal); ~80 GPU-hours at target loss 2.43 (~105k samples at GBS 1,024) |
 | Variance | CV = 3.4% at loss 2.45; 2.2% at loss 2.43 (10 seeds) |
-| Evaluation cost | ~30 s per 4,096-sample eval; ~14% of run time at the current cadence, <5% with eval every 10 steps or 1,024 samples |
+| Evaluation cost | ~30 s per 4,096-sample eval (~14% of run time at the current cadence); moving to 1,024 samples → ~7 s, ~3.5%; CV to be re-measured with the smaller set |
 | Scalability | To be checked (RCPs for GBS 1k / 2k / 4k) |
 
 ## Open items / next steps
 
-1. **Evaluation cost:** move to every 10 steps and/or 1,024 samples to meet
-   the 5% goal (current 24 evals × 30 s ≈ 12 min of an ~88 min run).
+1. **Evaluation set size:** reduce the held-out evaluation set from 4,096 to
+   1,024 samples (~7 s per evaluation instead of ~30 s, i.e. ~3.5% of run
+   time at the current every-5-steps cadence, meeting the 5% goal; currently
+   24 evals × 30 s ≈ 12 min of an ~88 min run). A smaller evaluation set has
+   a noisier loss estimate, so the **coefficient of variation will be
+   re-measured** with the 1,024-sample set before fixing the target.
 2. **Data robustness:** ~3–4% of samples per run still exceed the 8,192
    context after heuristic chunking (non-Latin scripts) and are skipped at
    load time; the skip substitution can break the image-per-batch guarantee

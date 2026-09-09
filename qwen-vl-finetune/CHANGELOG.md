@@ -23,6 +23,9 @@ training default, script, or pipeline behavior changes.
 
 ## 2026-09-09
 
+- `tools/md_to_gdoc_txt.py`: renders a Markdown doc as Google-Docs-friendly
+  plain text (no markup, tab-separated tables, `[image.png]` placeholders);
+  used to produce `docs/proposal/MLPerf_Training_proposal_Qwen3-VL.txt`.
 - `docs/proposal/MLPerf_Training_proposal_Qwen3-VL.md`: MLPerf Training
   benchmark proposal (Qwen3-VL-32B continued pretraining on MINT-1T; goal
   64–96 GB200 GPU-hours per run), filled with the 10-seed variance study
