@@ -23,6 +23,12 @@ training default, script, or pipeline behavior changes.
 
 ## 2026-09-09
 
+- Proposal: added a "Why Qwen3-VL" section — adoption (HF download stats,
+  Hub derivative counts vs. Qwen2.5-VL/InternVL3/Llama 3.2 Vision, framework
+  support), adaptability across sizes/modalities, architectural novelties
+  (interleaved-MRoPE, DeepStack, textual video timestamps, dynamic-resolution
+  SigLIP-2) and training-recipe novelties (staged curriculum, sqrt-normalized
+  per-token loss).
 - `tools/md_to_docx.py`: renders a Markdown doc as .docx (headings, nested
   lists with per-list numbering, tables, bold/italic, embedded images) for
   upload to Google Docs; produces

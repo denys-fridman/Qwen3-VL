@@ -106,6 +106,65 @@ Qwen3-VL-32B on the MINT-1T interleaved corpus**, mimicking Stage 1
   of MINT-1T samples, evaluated periodically during training; the benchmark
   target is a fixed eval loss.
 
+### Why Qwen3-VL
+
+**Adoption and ecosystem.** Qwen3-VL is the most widely adopted open VLM
+family today, which matters for a benchmark that should reflect what the
+community actually trains and deploys:
+
+| | Qwen3-VL-8B-Instruct | Qwen3-VL-32B-Instruct | Qwen3-VL-235B-A22B-Instruct |
+|---|---|---|---|
+| Released | 2025-10 | 2025-10 | 2025-09 |
+| Hugging Face downloads, all time | 61.7M | 17.1M | 9.3M |
+| Hugging Face downloads, last 30 days | 15.2M | 0.4M | 0.5M |
+
+Hub repositories carrying the family name (fine-tunes, quantizations,
+merges): ~5,700 for Qwen3-VL vs. ~3,600 for its predecessor Qwen2.5-VL,
+~860 for InternVL3 and ~440 for Llama-3.2-11B-Vision (Hugging Face API,
+2026-09). The architecture is a native `transformers` model class (no remote
+code), is supported by the major inference stacks (vLLM, TensorRT-LLM) and by
+the mainstream fine-tuning toolkits (LLaMA-Factory, ms-swift) — so a
+reference implementation built on it is portable, and the model people
+benchmark is the model people use.
+
+**Adaptability.** One architecture spans dense 2B → 32B and MoE 30B-A3B →
+235B-A22B, and one recipe covers images, multi-image, video, documents,
+grounding and GUI-agent data at 8K → 256K context — the benchmark model can
+be scaled or re-scoped without changing the workload's structure. The
+Instruct checkpoint also adapts readily to new data: in our runs, eval loss
+on an unseen interleaved corpus fell from 2.98 to 2.42 within ~125k samples
+with full-parameter training that was stable across all seeds.
+
+**Architectural novelties** (Qwen3-VL technical report):
+
+1. **Interleaved-MRoPE.** Qwen2.5-VL's MRoPE chunked the embedding
+   dimensions into temporal / height / width groups, which skews the
+   frequency spectrum and hurts long video; Qwen3-VL interleaves t, h and w
+   across low- and high-frequency bands for more faithful positions.
+2. **DeepStack cross-layer fusion.** Visual tokens taken from several
+   *intermediate* ViT layers are routed into the corresponding early LLM
+   layers through lightweight residual connections — multi-level
+   vision-language fusion at no extra context length. (An extension of the
+   original DeepStack, which stacked multi-scale inputs.) For a benchmark this
+   adds a genuinely different dataflow: vision features enter the decoder at
+   several depths, not only at the input embedding.
+3. **Explicit video timestamps.** Textual timestamp tokens (e.g.
+   `<3.0 seconds>`) replace positional-encoding-based absolute time
+   alignment (T-RoPE), a simpler and more direct temporal representation.
+4. **Dynamic-resolution SigLIP-2 encoder.** The 27-layer ViT is a SigLIP-2
+   SO-400M initialization continued-trained at native resolution with 2D-RoPE
+   and interpolated absolute positions, so each image costs a variable number
+   of tokens (one per 32×32 px).
+
+**Training-recipe novelties.** A staged pretraining curriculum (merger-only
+alignment → full-parameter multimodal pretraining at 8K → long-context at
+32K → 256K) with text-only data deliberately mixed in to preserve language
+ability; a **square-root-normalized per-token loss** replacing the per-sample
+loss to balance text and multimodal data; and post-training with long
+chain-of-thought SFT, strong-to-weak distillation and RL into separate
+thinking / non-thinking variants. Our proposed workload reproduces the core
+of the second stage — the one that dominates the compute budget.
+
 ## Qwen3-VL-32B details
 
 ### Goals
