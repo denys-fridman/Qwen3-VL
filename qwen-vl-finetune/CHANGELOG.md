@@ -23,9 +23,10 @@ training default, script, or pipeline behavior changes.
 
 ## 2026-09-09
 
-- Proposal: added a "Why Qwen3-VL" section — adoption (HF download stats,
-  Hub derivative counts vs. Qwen2.5-VL/InternVL3/Llama 3.2 Vision, framework
-  support), adaptability across sizes/modalities, architectural novelties
+- Proposal: added a "Why Qwen3-VL" section — adoption (HF download stats for
+  Qwen3-VL-32B-Instruct vs. comparable open VLMs from other families: Gemma 3
+  27B, InternVL3-38B/78B, Mistral Small 3.1, Llama 3.2 90B Vision, GLM-4.5V;
+  framework support), adaptability across sizes/modalities, architectural novelties
   (interleaved-MRoPE, DeepStack, textual video timestamps, dynamic-resolution
   SigLIP-2) and training-recipe novelties (staged curriculum, sqrt-normalized
   per-token loss).

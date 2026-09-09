@@ -108,24 +108,26 @@ Qwen3-VL-32B on the MINT-1T interleaved corpus**, mimicking Stage 1
 
 ### Why Qwen3-VL
 
-**Adoption and ecosystem.** Qwen3-VL is the most widely adopted open VLM
-family today, which matters for a benchmark that should reflect what the
-community actually trains and deploys:
+**Adoption and ecosystem.** Among open-weight VLMs of comparable size,
+Qwen3-VL-32B-Instruct is the most downloaded despite being the most recent
+release — which matters for a benchmark that should reflect what the
+community actually trains and deploys (Hugging Face API, 2026-09):
 
-| | Qwen3-VL-8B-Instruct | Qwen3-VL-32B-Instruct | Qwen3-VL-235B-A22B-Instruct |
-|---|---|---|---|
-| Released | 2025-10 | 2025-10 | 2025-09 |
-| Hugging Face downloads, all time | 61.7M | 17.1M | 9.3M |
-| Hugging Face downloads, last 30 days | 15.2M | 0.4M | 0.5M |
+| Model | Released | Params | Downloads, all time | Downloads, last 30 days |
+|---|---|---|---|---|
+| **Qwen3-VL-32B-Instruct** | 2025-10 | 33.4B | **17.1M** | **401k** |
+| Gemma 3 27B (it) | 2025-03 | 27.4B | 16.9M | 371k |
+| InternVL3-78B | 2025-04 | 78.4B | 6.4M | 14k |
+| Mistral Small 3.1 24B Instruct | 2025-03 | 24.0B | 4.1M | 241k |
+| InternVL3-38B | 2025-04 | 38.4B | 1.3M | 2k |
+| Llama 3.2 90B Vision Instruct | 2024-09 | 88.6B | 1.0M | 152k |
+| GLM-4.5V (MoE) | 2025-08 | 107.7B | 1.0M | 47k |
 
-Hub repositories carrying the family name (fine-tunes, quantizations,
-merges): ~5,700 for Qwen3-VL vs. ~3,600 for its predecessor Qwen2.5-VL,
-~860 for InternVL3 and ~440 for Llama-3.2-11B-Vision (Hugging Face API,
-2026-09). The architecture is a native `transformers` model class (no remote
-code), is supported by the major inference stacks (vLLM, TensorRT-LLM) and by
-the mainstream fine-tuning toolkits (LLaMA-Factory, ms-swift) — so a
-reference implementation built on it is portable, and the model people
-benchmark is the model people use.
+The architecture is a native `transformers` model class (no remote code), is
+supported by the major inference stacks (vLLM, TensorRT-LLM) and by the
+mainstream fine-tuning toolkits (LLaMA-Factory, ms-swift) — so a reference
+implementation built on it is portable, and the model people benchmark is the
+model people use.
 
 **Adaptability.** One architecture spans dense 2B → 32B and MoE 30B-A3B →
 235B-A22B, and one recipe covers images, multi-image, video, documents,
