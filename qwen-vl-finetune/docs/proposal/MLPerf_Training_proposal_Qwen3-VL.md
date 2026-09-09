@@ -108,20 +108,30 @@ Qwen3-VL-32B on the MINT-1T interleaved corpus**, mimicking Stage 1
 
 ### Why Qwen3-VL
 
-**Adoption and ecosystem.** Among open-weight VLMs of comparable size,
-Qwen3-VL-32B-Instruct is the most downloaded despite being the most recent
-release — which matters for a benchmark that should reflect what the
-community actually trains and deploys (Hugging Face API, 2026-09):
+**Adoption and ecosystem.** Among open-weight VLMs in the 20–40B class,
+Qwen3-VL-32B-Instruct is the most downloaded despite being among the most
+recent releases, and it has a substantial derivative ecosystem — which
+matters for a benchmark that should reflect what the community actually
+trains and deploys. As of 2026-09-09 (Hugging Face API; "derivatives" are
+Hub repositories declaring the model as their base):
 
-| Model | Released | Params | Downloads, all time | Downloads, last 30 days |
-|---|---|---|---|---|
-| **Qwen3-VL-32B-Instruct** | 2025-10 | 33.4B | **17.1M** | **401k** |
-| Gemma 3 27B (it) | 2025-03 | 27.4B | 16.9M | 371k |
-| InternVL3-78B | 2025-04 | 78.4B | 6.4M | 14k |
-| Mistral Small 3.1 24B Instruct | 2025-03 | 24.0B | 4.1M | 241k |
-| InternVL3-38B | 2025-04 | 38.4B | 1.3M | 2k |
-| Llama 3.2 90B Vision Instruct | 2024-09 | 88.6B | 1.0M | 152k |
-| GLM-4.5V (MoE) | 2025-08 | 107.7B | 1.0M | 47k |
+| Model | Released | Params | Downloads, all time | Downloads, last 30 days | Fine-tunes | Adapters | Quantized |
+|---|---|---|---|---|---|---|---|
+| **Qwen3-VL-32B-Instruct** | 2025-10 | 33.4B | **17.1M** | **401k** | 65 | 15 | 49 |
+| Gemma 3 27B (it) | 2025-03 | 27.4B | 16.9M | 371k | 448 | 259 | 144 |
+| Mistral Small 3.2 24B Instruct | 2025-06 | 24.0B | 5.2M | 128k | 65 | 15 | 69 |
+| Mistral Small 3.1 24B Instruct | 2025-03 | 24.0B | 4.1M | 241k | 58 | 12 | 64 |
+| InternVL3-38B | 2025-04 | 38.4B | 1.3M | 2k | 6 | 0 | 3 |
+| InternVL3.5-38B | 2025-08 | 38.4B | 0.3M | 20k | 6 | 0 | 7 |
+| Ovis2-34B | 2025-02 | 34.9B | 0.1M | 0.2k | 0 | 0 | 0 |
+| Aya Vision 32B | 2025-03 | 33.1B | 6.5k | 0.5k | 1 | 3 | 2 |
+
+Gemma 3 27B — seven months older and widely used as a text-only model as
+well — has the larger derivative tree; Qwen3-VL-32B matches the Mistral Small
+line in derivatives and leads every dedicated VLM in its class (InternVL3 /
+3.5, Ovis2, Aya Vision) by one to two orders of magnitude on both downloads
+and derivatives. It is also the only model in the table with a documented
+multi-stage multimodal pretraining recipe.
 
 The architecture is a native `transformers` model class (no remote code), is
 supported by the major inference stacks (vLLM, TensorRT-LLM) and by the
