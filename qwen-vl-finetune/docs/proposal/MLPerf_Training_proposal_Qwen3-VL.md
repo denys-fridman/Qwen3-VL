@@ -162,9 +162,6 @@ and stays below ~10 afterwards.
 
 ### Convergence variance
 
-![Coefficient of variation: target loss vs. samples required to reach it,
-mean ± 1 std over seeds](coefficient_of_variance.png)
-
 Samples to first reach a target eval loss, over 10 seeds (eval every 5,120
 samples; targets ≥ 2.60 are reached within the first few evaluations and are
 therefore quantized to 0% CV):
