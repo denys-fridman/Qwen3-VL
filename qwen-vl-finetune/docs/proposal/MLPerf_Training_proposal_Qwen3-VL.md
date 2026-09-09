@@ -92,8 +92,9 @@ Qwen3-VL-32B on the MINT-1T interleaved corpus**, mimicking Stage 1
   DeepSpeed ZeRO-3), extended on our branch with full-sequence
   next-token loss (continued pretraining rather than SFT), interleaved-data
   preprocessing, image-guaranteed batch construction, held-out evaluation and
-  transformers-v5 compatibility. A Megatron-Bridge / NeMo recipe would be the
-  natural submission-grade reference and is the planned next step.
+  transformers-v5 compatibility. This codebase is the proposed reference
+  implementation; before submission it will be trimmed to the code paths the
+  benchmark uses (e.g. removing the SFT/LoRA and video paths).
 * **Dataset:** MINT-1T (HTML subset) — the largest open interleaved
   image-text corpus (~1T tokens, CC-BY-4.0), i.e. the public proxy for the
   interleaved data that dominates Qwen3-VL's Stage 1. Documents are chunked
@@ -201,9 +202,9 @@ denser evaluation near the target would tighten them further.
    load time; the skip substitution can break the image-per-batch guarantee
    and caused the seed-10 NCCL hang. Fix: exact tokenizer-based chunking in
    preprocessing and image-aware substitution in the loader.
-3. **Reference implementation:** port the recipe to Megatron-Bridge / NeMo
-   (TP/PP/CP support, FP8 policy, checkpoint format) and define the
-   reference convergence points for GBS 1k / 2k / 4k.
+3. **Reference implementation:** clean up the current codebase (remove
+   unused code paths, pin dependencies, document the run procedure) and
+   define the reference convergence points for GBS 1k / 2k / 4k.
 4. **Target selection:** choose the target eval loss (2.45 vs. 2.43) and
    fix the held-out evaluation set (currently seed-specific) as a shared
    benchmark artifact.
