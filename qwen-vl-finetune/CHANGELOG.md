@@ -24,10 +24,10 @@ training default, script, or pipeline behavior changes.
 ## 2026-09-09
 
 - `docs/proposal/MLPerf_Training_proposal_Qwen3-VL.md`: MLPerf Training
-  benchmark proposal (Qwen3-VL-32B continued pretraining on MINT-1T),
-  modeled on the DeepSeek-V3 MoE proposal and filled with the 10-seed
-  variance study (2026-09-03 sweep: 64 GB200, GBS 1,024, LR 5e-6, 150 steps;
-  CV 3.4% at eval loss 2.45, 2.2% at 2.43); figures alongside.
+  benchmark proposal (Qwen3-VL-32B continued pretraining on MINT-1T; goal
+  64–96 GB200 GPU-hours per run), filled with the 10-seed variance study
+  (2026-09-03 sweep: 64 GB200, GBS 1,024, LR 5e-6, 150 steps; CV 3.4% at
+  eval loss 2.45, 2.2% at 2.43); figures alongside.
 
 ## 2026-09-02
 

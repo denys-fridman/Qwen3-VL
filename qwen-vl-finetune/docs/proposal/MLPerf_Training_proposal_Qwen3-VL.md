@@ -109,8 +109,8 @@ Qwen3-VL-32B on the MINT-1T interleaved corpus**, mimicking Stage 1
 
 ### Goals
 
-1. Reasonable compute budget: currently ~100 GB200 GPU-hours per run (BF16);
-   the target loss can be chosen to trade budget against variance (see table).
+1. Reasonable compute budget: **64–96 GB200 GPU-hours per run (BF16)**; the
+   target loss is chosen so that a run lands inside this budget (see table).
 2. Low variance: measured CV of samples-to-target of 2–4% over 10 seeds at
    the candidate targets.
 3. Evaluation cost below 5% of the training budget (currently ~14%; see
@@ -121,9 +121,8 @@ Qwen3-VL-32B on the MINT-1T interleaved corpus**, mimicking Stage 1
 ### Training
 
 Scenario: **continued pretraining from the publicly available checkpoint**
-(weights only; no optimizer state). This corresponds to the third scenario of
-the DeepSeek-V3 proposal, with the advantage that the checkpoint is already
-available to everyone and no additional artifact needs distributing. The
+(weights only; no optimizer state). The checkpoint is already available to
+everyone, so no additional artifact needs distributing. The
 public checkpoint is post-trained (Instruct), but on interleaved web data the
 loss is far from saturated: eval loss falls from 2.98 to 2.42 over ~125k
 samples. Training from scratch is not viable at this scale, and Qwen3-VL base
@@ -181,16 +180,17 @@ therefore quantized to 0% CV):
 
 (9/10 at the lower targets reflects the seed-10 hang, not divergence.)
 
-Candidate targets: **eval loss 2.45** (~80k samples, ~60 GB200 GPU-hours,
-CV 3.4%) or **2.43** (~104k samples, ~80 GPU-hours, CV 2.2%). The CV values
-are upper bounds set by the 5,120-sample evaluation granularity; denser
-evaluation near the target would tighten them further.
+Candidate targets: **eval loss 2.43** (~104k samples, ~80 GB200 GPU-hours
+including evaluation, CV 2.2%) sits inside the 64–96 GPU-hour goal;
+**2.45** (~80k samples, ~60 GPU-hours, CV 3.4%) falls just below it. The CV
+values are upper bounds set by the 5,120-sample evaluation granularity;
+denser evaluation near the target would tighten them further.
 
 ## Summary
 
 | | Continued pretraining from the public Qwen3-VL-32B checkpoint |
 |---|---|
-| Compute budget | ~60–80 GB200 GPU-hours per run (~80–105k samples at GBS 1,024) |
+| Compute budget | 64–96 GB200 GPU-hours per run (goal); ~80 GPU-hours at target loss 2.43 (~105k samples at GBS 1,024) |
 | Variance | CV = 3.4% at loss 2.45; 2.2% at loss 2.43 (10 seeds) |
 | Evaluation cost | ~30 s per 4,096-sample eval; ~14% of run time at the current cadence, <5% with eval every 10 steps or 1,024 samples |
 | Scalability | To be checked (RCPs for GBS 1k / 2k / 4k) |
