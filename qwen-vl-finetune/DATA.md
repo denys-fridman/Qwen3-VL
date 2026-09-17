@@ -67,7 +67,14 @@ bash scripts/preprocess_mint1t.sh <data_dir>
 ```
 
 This downloads/validates the images and writes `annotations.jsonl` plus
-`images/` to `<data_dir>/processed`. Point training at it via
+`images/` to `<data_dir>/processed`.
+
+The MINT-1T **PDF** subset ships as tar shards of `<id>.json` / `<id>.tiff`
+pairs (images embedded as multi-frame TIFFs, no URLs). It is converted to the
+same format with `bash scripts/preprocess_mint1t_pdf.sh <data_dir>`
+(`<data_dir>/*.tar` → `<data_dir>/processed`), registered as `mint1t_pdf`
+(`MINT1T_PDF_DATA_DIR`), and can be mixed with the HTML subset via
+`DATASETS="mint1t%100,mint1t_pdf%100"`. Point training at it via
 `MINT1T_DATA_DIR=<data_dir>/processed sbatch scripts/cpt_32b_sbatch.sh <full|llm>`
 (the default already matches
 `/lustre/fsw/coreai_mlperf_training/users/dfridman/datasets/MINT-1T-HTML/processed`).

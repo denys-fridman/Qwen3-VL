@@ -21,6 +21,17 @@ training default, script, or pipeline behavior changes.
 | Checkpointing | disabled; output to container-local `/results` | `OUTPUT_DIR` |
 | Seed | 42 | `SEED` |
 
+## 2026-09-17
+
+- **MINT-1T PDF subset support**: `tools/preprocess_mint1t_pdf.py` +
+  `scripts/preprocess_mint1t_pdf.sh <data_dir>` convert tar shards of
+  `<id>.json` / `<id>.tiff` pairs (images extracted from the per-document
+  multi-frame TIFF, named by `sha256`; `page_<p>_image_<xref>` refs resolved
+  via `image_metadata`) into the same annotation format, reusing the HTML
+  converter's chunking and tokenizer verification; optional `MIN_EN_SCORE`
+  language filter. Registered as dataset `mint1t_pdf`
+  (`MINT1T_PDF_DATA_DIR`); mix with `DATASETS="mint1t%100,mint1t_pdf%100"`.
+
 ## 2026-09-09
 
 - Proposal: added a "Why Qwen3-VL" section — adoption as of 2026-09-09 (HF

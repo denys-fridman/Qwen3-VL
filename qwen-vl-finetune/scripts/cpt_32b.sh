@@ -62,6 +62,9 @@ entry_file=qwenvl/train/train_qwen.py
 # output directory of that script and is read by qwenvl/data/__init__.py;
 # exported so the torchrun workers inherit it.
 export MINT1T_DATA_DIR=${2:-${MINT1T_DATA_DIR:-"/lustre/fsw/coreai_mlperf_training/users/dfridman/datasets/MINT-1T-HTML/processed"}}
+# MINT-1T PDF subset (tools/preprocess_mint1t_pdf.py); combine datasets with
+# e.g. DATASETS="mint1t%100,mint1t_pdf%100"
+export MINT1T_PDF_DATA_DIR=${MINT1T_PDF_DATA_DIR:-"/lustre/fsw/coreai_mlperf_training/users/dfridman/datasets/MINT-1T-PDF/processed"}
 datasets=${DATASETS:-"mint1t%100"}
 
 # Output configuration

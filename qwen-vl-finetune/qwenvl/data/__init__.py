@@ -36,6 +36,16 @@ MINT1T = {
     "data_path": MINT1T_DATA_DIR,
 }
 
+# MINT-1T PDF subset produced by tools/preprocess_mint1t_pdf.py (same format).
+MINT1T_PDF_DATA_DIR = os.environ.get(
+    "MINT1T_PDF_DATA_DIR",
+    "/lustre/fsw/coreai_mlperf_training/users/dfridman/datasets/MINT-1T-PDF/processed",
+)
+MINT1T_PDF = {
+    "annotation_path": os.path.join(MINT1T_PDF_DATA_DIR, "annotations.jsonl"),
+    "data_path": MINT1T_PDF_DATA_DIR,
+}
+
 data_dict = {
     "cambrian_737k": CAMBRIAN_737K,
     "cambrian_737k_pack": CAMBRIAN_737K_PACK,
@@ -43,6 +53,7 @@ data_dict = {
     "clevr_mc": CLEVR_MC,
     "videochatgpt": VIDEOCHATGPT,
     "mint1t": MINT1T,
+    "mint1t_pdf": MINT1T_PDF,
 }
 
 
