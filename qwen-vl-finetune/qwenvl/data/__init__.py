@@ -39,7 +39,7 @@ MINT1T = {
 # MINT-1T PDF subset produced by tools/preprocess_mint1t_pdf.py (same format).
 MINT1T_PDF_DATA_DIR = os.environ.get(
     "MINT1T_PDF_DATA_DIR",
-    "/lustre/fsw/coreai_mlperf_training/users/dfridman/datasets/MINT-1T-PDF/processed",
+    "/lustre/fsw/coreai_mlperf_training/users/dfridman/datasets/MINT-1T-PDF/CC-MAIN-2024-18-shard-0/processed",
 )
 MINT1T_PDF = {
     "annotation_path": os.path.join(MINT1T_PDF_DATA_DIR, "annotations.jsonl"),

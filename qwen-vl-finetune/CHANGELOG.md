@@ -30,7 +30,9 @@ training default, script, or pipeline behavior changes.
   via `image_metadata`) into the same annotation format, reusing the HTML
   converter's chunking and tokenizer verification; optional `MIN_EN_SCORE`
   language filter. Registered as dataset `mint1t_pdf`
-  (`MINT1T_PDF_DATA_DIR`); mix with `DATASETS="mint1t%100,mint1t_pdf%100"`.
+  (`MINT1T_PDF_DATA_DIR`, default
+  `$LUSTRE/datasets/MINT-1T-PDF/CC-MAIN-2024-18-shard-0/processed`); mix with
+  `DATASETS="mint1t%100,mint1t_pdf%100"`.
 
 ## 2026-09-09
 
