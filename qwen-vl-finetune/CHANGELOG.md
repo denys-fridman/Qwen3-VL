@@ -17,9 +17,16 @@ training default, script, or pipeline behavior changes.
 | Image budget | 200,704 px (≤196 tokens/image) | `MAX_PIXELS` |
 | LR / schedule | 5e-6 peak, 10-step linear warmup, cosine→0 | `LR`, `WARMUP_STEPS` |
 | Total steps | 150 (`-1` → epoch-based, 10 epochs) | `MAX_STEPS` |
-| Eval | 1,024 held-out samples, every 5 steps | `EVAL_SAMPLES`, `EVAL_STEPS` |
+| Eval | 1,024 held-out samples (split seed 42), every 5 steps | `EVAL_SAMPLES`, `EVAL_SEED`, `EVAL_STEPS` |
 | Checkpointing | disabled; output to container-local `/results` | `OUTPUT_DIR` |
 | Seed | 42 | `SEED` |
+
+## 2026-09-18
+
+- Eval hold-out split seed is its own knob again: `--eval_seed` /
+  `EVAL_SEED` (default 42), independent of the training `SEED`, so all seeds
+  of a variance sweep are evaluated on the same held-out samples (replaces
+  the 2026-09-02 change that tied the split to the training seed).
 
 ## 2026-09-17
 

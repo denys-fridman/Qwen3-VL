@@ -77,6 +77,8 @@ export MAX_STEPS=${MAX_STEPS:-150}
 
 # Random seed (init, data order); e.g. SEED=1234 sbatch ... to override
 export SEED=${SEED:-42}
+# Seed of the held-out eval split (independent of SEED)
+export EVAL_SEED=${EVAL_SEED:-42}
 
 # Variable-length packed sequences allocate many differently-sized buffers,
 # which fragments the CUDA caching allocator; expandable segments avoids

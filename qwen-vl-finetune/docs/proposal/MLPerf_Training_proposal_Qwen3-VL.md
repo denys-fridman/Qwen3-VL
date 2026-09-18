@@ -294,7 +294,8 @@ denser evaluation near the target would tighten them further.
    unused code paths, pin dependencies, document the run procedure) and
    define the reference convergence points for GBS 1k / 2k / 4k.
 4. **Target selection:** choose the target eval loss (2.45 vs. 2.43) and
-   fix the held-out evaluation set (currently seed-specific) as a shared
-   benchmark artifact.
+   fix the held-out evaluation set as a shared benchmark artifact (the runs
+   above used seed-specific splits; the split seed is now decoupled from the
+   training seed, so future sweeps evaluate every seed on the same samples).
 5. **Scale sensitivity:** repeat the variance study at 2× and 4× GBS with
    LR scaling to establish RCPs.

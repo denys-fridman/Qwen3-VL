@@ -49,8 +49,15 @@ class DataArguments:
     eval_samples: int = field(
         default=0,
         metadata={
-            "help": "Hold out this many samples (shuffled with the training seed) as "
-            "an eval set; 0 disables evaluation."
+            "help": "Hold out this many samples as an eval set; 0 disables evaluation."
+        },
+    )
+    eval_seed: int = field(
+        default=42,
+        metadata={
+            "help": "Seed of the shuffle that selects the held-out eval samples. Kept "
+            "separate from --seed so runs with different training seeds are evaluated "
+            "on the same held-out set."
         },
     )
     base_interval: int = field(default=2)

@@ -51,6 +51,9 @@ max_pixels=${MAX_PIXELS:-200704}
 min_pixels=${MIN_PIXELS:-784}
 # Samples held out from the training data for eval loss (0 disables)
 eval_samples=${EVAL_SAMPLES:-1024}
+# Seed of the held-out split, independent of SEED so all training seeds are
+# evaluated on the same samples
+eval_seed=${EVAL_SEED:-42}
 # Evaluate every N optimizer steps (a float <1 works as a ratio of total steps)
 eval_steps=${EVAL_STEPS:-5}
 
@@ -128,6 +131,7 @@ args="
     --eval_strategy "steps" \
     --eval_steps ${eval_steps} \
     --eval_samples ${eval_samples} \
+    --eval_seed ${eval_seed} \
     --save_strategy "no" \
     --learning_rate ${lr} \
     --weight_decay 0.01 \
@@ -150,7 +154,7 @@ if [ "${NODE_RANK}" = "0" ]; then
     echo "data=${MINT1T_DATA_DIR} datasets=${datasets} max_pixels=${max_pixels} min_pixels=${min_pixels}"
     echo "tune_mm_vision=${tune_mm_vision} tune_mm_mlp=${tune_mm_mlp} tune_mm_llm=${tune_mm_llm} llm_last_n=${llm_last_n}"
     echo "allow_text_only=${allow_text_only} require_image_per_batch=${require_image_per_batch}"
-    echo "eval_samples=${eval_samples} eval_steps=${eval_steps} output_dir=${output_dir} report_to=${report_to}"
+    echo "eval_samples=${eval_samples} eval_seed=${eval_seed} eval_steps=${eval_steps} output_dir=${output_dir} report_to=${report_to}"
     echo "=========================="
 fi
 

@@ -680,8 +680,8 @@ def make_supervised_data_module(processor, data_args) -> Dict:
     if eval_samples > 0:
         eval_samples = min(eval_samples, len(train_dataset) // 2)
         indices = list(range(len(train_dataset)))
-        # the split follows the training seed (train_qwen.py sets eval_seed from
-        # --seed), so each seed trains and evaluates on its own partition
+        # --eval_seed is independent of --seed, so runs with different training
+        # seeds share the same held-out set unless it is changed explicitly
         random.Random(getattr(data_args, "eval_seed", 42)).shuffle(indices)
         if getattr(data_args, "require_image_per_batch", False):
             # eval batches have no image guarantee, so keep eval image-only to
