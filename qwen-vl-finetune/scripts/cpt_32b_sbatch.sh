@@ -65,6 +65,12 @@ export NNODES=$SLURM_NNODES
 # Local HF checkpoint (inside the LUSTRE_DIR mount); picked up by cpt_32b.sh
 export MODEL_PATH=${MODEL_PATH:-${LUSTRE_DIR}/checkpoints/hf/Qwen3-VL-32B-Instruct}
 
+# Training data (registered names in qwenvl/data/__init__.py, "%N" = sampling
+# rate). Default: the MINT-1T PDF subset.
+export DATASETS=${DATASETS:-"mint1t_pdf%100"}
+# export DATASETS="mint1t%100"                 # MINT-1T HTML subset
+# export DATASETS="mint1t%100,mint1t_pdf%100"  # HTML + PDF mixed
+
 # LLM_LAST_N>0 trains only the last N LLM decoder layers (development)
 export LLM_LAST_N=${LLM_LAST_N:--1}
 

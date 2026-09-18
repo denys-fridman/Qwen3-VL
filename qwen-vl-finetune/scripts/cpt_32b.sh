@@ -68,7 +68,7 @@ export MINT1T_DATA_DIR=${2:-${MINT1T_DATA_DIR:-"/lustre/fsw/coreai_mlperf_traini
 # MINT-1T PDF subset (tools/preprocess_mint1t_pdf.py); combine datasets with
 # e.g. DATASETS="mint1t%100,mint1t_pdf%100"
 export MINT1T_PDF_DATA_DIR=${MINT1T_PDF_DATA_DIR:-"/lustre/fsw/coreai_mlperf_training/users/dfridman/datasets/MINT-1T-PDF/CC-MAIN-2024-18-shard-0/processed"}
-datasets=${DATASETS:-"mint1t%100"}
+datasets=${DATASETS:-"mint1t_pdf%100"}
 
 # Output configuration
 run_name="qwen3vl-32b-cpt"
@@ -151,7 +151,8 @@ if [ "${NODE_RANK}" = "0" ]; then
     echo "=== cpt_32b run config ==="
     echo "seed=${seed} lr=${lr} warmup_steps=${warmup_steps} max_steps=${max_steps} batch_size=${batch_size} grad_accum=${grad_accum_steps} nnodes=${NNODES} nproc_per_node=${NPROC_PER_NODE}"
     echo "model=${llm}"
-    echo "data=${MINT1T_DATA_DIR} datasets=${datasets} max_pixels=${max_pixels} min_pixels=${min_pixels}"
+    echo "datasets=${datasets} html_data=${MINT1T_DATA_DIR} pdf_data=${MINT1T_PDF_DATA_DIR}"
+    echo "max_pixels=${max_pixels} min_pixels=${min_pixels}"
     echo "tune_mm_vision=${tune_mm_vision} tune_mm_mlp=${tune_mm_mlp} tune_mm_llm=${tune_mm_llm} llm_last_n=${llm_last_n}"
     echo "allow_text_only=${allow_text_only} require_image_per_batch=${require_image_per_batch}"
     echo "eval_samples=${eval_samples} eval_seed=${eval_seed} eval_steps=${eval_steps} output_dir=${output_dir} report_to=${report_to}"

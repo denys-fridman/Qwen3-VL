@@ -11,7 +11,7 @@ training default, script, or pipeline behavior changes.
 | Mode | `full` \| `llm` (required arg) | `scripts/cpt_32b_sbatch.sh` |
 | Nodes / time / partition | 16 / 1.5h / `36x2-a01r` | sbatch header |
 | Model | `$LUSTRE/checkpoints/hf/Qwen3-VL-32B-Instruct` | `MODEL_PATH` |
-| Data | `$LUSTRE/datasets/MINT-1T-HTML/processed` | `MINT1T_DATA_DIR` |
+| Data | `mint1t_pdf%100` (`$LUSTRE/datasets/MINT-1T-PDF/CC-MAIN-2024-18-shard-0/processed`); HTML subset via `DATASETS="mint1t%100"` | `DATASETS`, `MINT1T_PDF_DATA_DIR`, `MINT1T_DATA_DIR` |
 | Micro batch / grad accum | 2 / 8 (global 1,024 samples) | `cpt_32b.sh` |
 | Sequence length | 8,192 | `--model_max_length` |
 | Image budget | 200,704 px (≤196 tokens/image) | `MAX_PIXELS` |
@@ -23,6 +23,10 @@ training default, script, or pipeline behavior changes.
 
 ## 2026-09-18
 
+- Default training data switched to the MINT-1T PDF subset
+  (`DATASETS=mint1t_pdf%100`); the HTML subset and the HTML+PDF mix are kept
+  as commented alternatives in the sbatch launcher. The run-config banner
+  now prints both dataset directories.
 - Eval hold-out split seed is its own knob again: `--eval_seed` /
   `EVAL_SEED` (default 42), independent of the training `SEED`, so all seeds
   of a variance sweep are evaluated on the same held-out samples (replaces
