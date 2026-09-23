@@ -1,6 +1,7 @@
 #!/bin/bash
-# Slurm launcher for Qwen3-VL-32B continued pretraining (runs scripts/cpt_32b.sh
-# on every node inside the training container).
+# Slurm launcher for Qwen VLM continued pretraining (Qwen3.8-27B by default,
+# Qwen3-VL-32B via MODEL_PATH); runs scripts/cpt_32b.sh on every node inside
+# the training container.
 #
 # Submit (mode is required: "full" trains the whole model S1-style, "llm"
 # trains the language model only):
@@ -8,11 +9,12 @@
 #   sbatch scripts/cpt_32b_sbatch.sh llm
 # Overrides (forwarded to scripts/cpt_32b.sh via the environment):
 #   MODEL_PATH=... MINT1T_DATA_DIR=... DATASETS=... LLM_LAST_N=8 REPORT_TO=wandb \
+#     MICRO_BATCH=1 GRAD_ACCUM=16 \
 #     CONTAINER_IMAGE=<image> sbatch --nodes=2 --partition=<p> scripts/cpt_32b_sbatch.sh full
 
 #SBATCH --account=coreai_mlperf_training
 #SBATCH --exclusive
-#SBATCH --job-name=coreai_mlperf_training-training.qwen3vl_32b_cpt
+#SBATCH --job-name=coreai_mlperf_training-training.qwen3_8_27b_cpt
 #SBATCH --mem=0
 #SBATCH --nodes=16
 #SBATCH --ntasks-per-node=1
@@ -62,8 +64,11 @@ export MASTER_ADDR=$(srun --nodes=1 --ntasks=1 -w "$head_node" hostname --ip-add
 export MASTER_PORT=${MASTER_PORT:-29500}
 export NNODES=$SLURM_NNODES
 
-# Local HF checkpoint (inside the LUSTRE_DIR mount); picked up by cpt_32b.sh
-export MODEL_PATH=${MODEL_PATH:-${LUSTRE_DIR}/checkpoints/hf/Qwen3-VL-32B-Instruct}
+# Local HF checkpoint (inside the LUSTRE_DIR mount); picked up by cpt_32b.sh.
+# The model class is chosen from the checkpoint's config.json (model_type), so
+# Qwen3-VL and Qwen3.5/3.8 checkpoints both work here.
+export MODEL_PATH=${MODEL_PATH:-${LUSTRE_DIR}/checkpoints/hf/Qwen3.8-27B}
+# export MODEL_PATH=${LUSTRE_DIR}/checkpoints/hf/Qwen3-VL-32B-Instruct
 
 # Training data (registered names in qwenvl/data/__init__.py, "%N" = sampling
 # rate). Default: the MINT-1T PDF subset.
@@ -73,6 +78,12 @@ export DATASETS=${DATASETS:-"mint1t_pdf%100"}
 
 # LLM_LAST_N>0 trains only the last N LLM decoder layers (development)
 export LLM_LAST_N=${LLM_LAST_N:--1}
+
+# Per-GPU micro batch and gradient accumulation; keep their product times the
+# GPU count at 1024 (global batch). Drop to MICRO_BATCH=1 GRAD_ACCUM=16 if the
+# model does not fit (Qwen3.8-27B's 248k-vocab logits are ~1.6x Qwen3-VL's)
+export MICRO_BATCH=${MICRO_BATCH:-2}
+export GRAD_ACCUM=${GRAD_ACCUM:-8}
 
 # Peak learning rate (linear warmup to this, then cosine decay to 0)
 export LR=${LR:-5e-6}

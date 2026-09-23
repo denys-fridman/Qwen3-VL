@@ -1,7 +1,7 @@
 #!/bin/bash
-# Continued pretraining (full-sequence next-token loss) of Qwen3-VL-32B
-# from an existing checkpoint. Requires ~8x80G GPUs with ZeRO-3; switch to
-# scripts/zero3_offload.json if you hit OOM.
+# Continued pretraining (full-sequence next-token loss) of a Qwen VLM
+# (Qwen3-VL-32B, Qwen3.8-27B, ...) from an existing checkpoint. Requires
+# ~8x80G GPUs with ZeRO-3; switch to scripts/zero3_offload.json if you hit OOM.
 
 # Distributed training configuration (multi-node: set MASTER_ADDR/NNODES and
 # per-node NODE_RANK, or launch via scripts/cpt_32b_sbatch.sh under Slurm)
@@ -17,10 +17,9 @@ deepspeed=./scripts/zero3.json
 # Model configuration
 # Usage: bash scripts/cpt_32b.sh [MODEL_PATH] [MINT1T_DATA_DIR]
 # Positional argument > env var > default.
-# HuggingFace ID or a local checkpoint path. NOTE: train_qwen.py picks the model
-# class from the path name — it must contain "qwen3", and for the dense model the
-# last path component must NOT contain the letter "a" (that selects the MoE class).
-llm=${1:-${MODEL_PATH:-"Qwen/Qwen3-VL-32B-Instruct"}}
+# HuggingFace ID or a local checkpoint path. train_qwen.py picks the model class
+# from the checkpoint's config.json model_type (Qwen2/2.5/3-VL, Qwen3.5/3.8).
+llm=${1:-${MODEL_PATH:-"Qwen/Qwen3.8-27B"}}
 
 # Training hyperparameters
 # Typical continued-pretraining LR for this scale is 1e-6 to 1e-5 depending on
@@ -36,9 +35,12 @@ max_steps=${MAX_STEPS:-150}
 # batch_size 2 is needed in full mode: with REQUIRE_IMAGE_PER_BATCH the
 # second slot is what lets text-only samples ride along. The memory for it
 # comes from the reduced MAX_PIXELS below (batch 2 at 576*28*28 was OOM,
-# since data_flatten packs the micro-batch into one sequence).
-batch_size=2
-grad_accum_steps=8
+# since data_flatten packs the micro-batch into one sequence). Keep
+# MICRO_BATCH * GRAD_ACCUM * #GPUs = 1024 (the global batch the CV analysis
+# assumes); e.g. MICRO_BATCH=1 GRAD_ACCUM=16 if the 248k-vocab logits of
+# Qwen3.8-27B do not fit at micro batch 2.
+batch_size=${MICRO_BATCH:-2}
+grad_accum_steps=${GRAD_ACCUM:-8}
 seed=${SEED:-42}
 # Per-image pixel budget, applied by the image processor at training time
 # (stored images keep native resolution). 200704 = 256*28*28 -> up to 196
@@ -71,7 +73,7 @@ export MINT1T_PDF_DATA_DIR=${MINT1T_PDF_DATA_DIR:-"/lustre/fsw/coreai_mlperf_tra
 datasets=${DATASETS:-"mint1t_pdf%100"}
 
 # Output configuration
-run_name="qwen3vl-32b-cpt"
+run_name=${RUN_NAME:-"qwen-vl-cpt"}
 # /results is container-local (not mounted): each run starts with a clean
 # output dir, and checkpoints are discarded when the job ends
 output_dir=${OUTPUT_DIR:-"/results"}
@@ -157,6 +159,8 @@ if [ "${NODE_RANK}" = "0" ]; then
     echo "allow_text_only=${allow_text_only} require_image_per_batch=${require_image_per_batch}"
     echo "eval_samples=${eval_samples} eval_seed=${eval_seed} eval_steps=${eval_steps} output_dir=${output_dir} report_to=${report_to}"
     echo "=========================="
+    # Environment readiness (versions, kernels, model classes); informational
+    python tools/check_env.py || true
 fi
 
 # Launch training

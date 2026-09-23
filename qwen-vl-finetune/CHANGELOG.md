@@ -1,18 +1,19 @@
 # Continued-Pretraining Changelog
 
-Running log of changes made on this branch for Qwen3-VL-32B continued
-pretraining (see DATA.md for the data rationale). Append an entry whenever a
-training default, script, or pipeline behavior changes.
+Running log of changes made on this branch for Qwen VLM continued
+pretraining (Qwen3-VL-32B, and Qwen3.8-27B on branch dfridman/qwen3.8-27b;
+see DATA.md for the data rationale). Append an entry whenever a training
+default, script, or pipeline behavior changes.
 
-## Current defaults (2026-09-01)
+## Current defaults (2026-09-23)
 
 | Setting | Value | Where |
 |---|---|---|
 | Mode | `full` \| `llm` (required arg) | `scripts/cpt_32b_sbatch.sh` |
 | Nodes / time / partition | 16 / 1.5h / `36x2-a01r` | sbatch header |
-| Model | `$LUSTRE/checkpoints/hf/Qwen3-VL-32B-Instruct` | `MODEL_PATH` |
+| Model | `$LUSTRE/checkpoints/hf/Qwen3.8-27B` (`qwen3_5` arch); Qwen3-VL-32B-Instruct kept as a commented alternative | `MODEL_PATH` |
 | Data | `mint1t_pdf%100` (`$LUSTRE/datasets/MINT-1T-PDF/CC-MAIN-2024-18-shard-0/processed`); HTML subset via `DATASETS="mint1t%100"` | `DATASETS`, `MINT1T_PDF_DATA_DIR`, `MINT1T_DATA_DIR` |
-| Micro batch / grad accum | 2 / 8 (global 1,024 samples) | `cpt_32b.sh` |
+| Micro batch / grad accum | 2 / 8 (global 1,024 samples); `MICRO_BATCH=1 GRAD_ACCUM=16` if the 248k-vocab logits OOM | `MICRO_BATCH`, `GRAD_ACCUM` |
 | Sequence length | 8,192 | `--model_max_length` |
 | Image budget | 200,704 px (≤196 tokens/image) | `MAX_PIXELS` |
 | LR / schedule | 5e-6 peak, 10-step linear warmup, cosine→0 | `LR`, `WARMUP_STEPS` |
@@ -20,6 +21,42 @@ training default, script, or pipeline behavior changes.
 | Eval | 1,024 held-out samples (split seed 42), every 5 steps | `EVAL_SAMPLES`, `EVAL_SEED`, `EVAL_STEPS` |
 | Checkpointing | disabled; output to container-local `/results` | `OUTPUT_DIR` |
 | Seed | 42 | `SEED` |
+
+## 2026-09-23 (branch dfridman/qwen3.8-27b)
+
+- **Qwen3.8-27B support** (`qwen3_5` architecture: hybrid Gated-DeltaNet /
+  full-attention text stack, Qwen3-VL-style ViT, 248k vocab; needs
+  transformers >= 5.8 plus flash-linear-attention and causal-conv1d kernels):
+  - model class is now resolved from `config.json` `model_type` via
+    `qwenvl/train/model_registry.py` (the path-name heuristic is gone);
+  - vision placeholder / vision-start token ids come from the model config
+    (`rope2d.set_token_ids`) instead of the hard-coded Qwen3-VL ids;
+  - new packing path `fa_kwargs`: the flattened collator emits HF
+    FlashAttentionKwargs (`cu_seq_lens_q/k`, `max_length_q/k`) consumed
+    natively by flash attention and the Gated DeltaNet layers, instead of the
+    Qwen3-VL attention monkeypatch; `enable_fa_kwargs_packing` strips those
+    kwargs before the vision tower (which passes its own cu_seq_lens);
+  - startup refuses to train a hybrid stack when the Gated DeltaNet varlen
+    kernel (`flash-linear-attention`) is missing, because transformers' torch
+    reference ignores `cu_seqlens` and would leak recurrent state across the
+    documents packed into a micro-batch (`ALLOW_GDN_TORCH_FALLBACK=1`
+    downgrades this to a warning);
+  - chat template rendered with `enable_thinking=False` for Qwen3.5/3.8 so no
+    reasoning instruction is injected into pretraining samples;
+  - dummy vision forward and trainable-parameter printouts registered for the
+    Qwen3.5 classes; `tools/check_env.py` reports versions/kernels/classes and
+    runs at launch; sbatch `MODEL_PATH` defaults to
+    `$LUSTRE/checkpoints/hf/Qwen3.8-27B` (Qwen3-VL-32B kept commented);
+  - `MICRO_BATCH` / `GRAD_ACCUM` env knobs (defaults unchanged: 2 / 8) and
+    `RUN_NAME` (default `qwen-vl-cpt`) added to `cpt_32b.sh`;
+  - known residual: the Gated DeltaNet's causal conv (kernel 4) is not given
+    per-document `seq_idx`, so the first 3 tokens of each packed document see
+    the previous document's last 3 tokens through the conv — the same
+    behavior as transformers' own packed training; the delta-rule state and
+    the attention layers are fully document-isolated.
+  - `tests/test_qwen3_5_support.py` (runs without a GPU or transformers) covers
+    the registry, config-driven token ids in M-RoPE, the `fa_kwargs` collator,
+    label masking, and the kernel guard.
 
 ## 2026-09-18
 

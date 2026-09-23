@@ -1,6 +1,17 @@
 import torch
 from typing import Dict, Optional, Sequence, List, Tuple
 
+# Special-token ids used to locate images/videos when building M-RoPE positions.
+# Defaults are the Qwen2/2.5/3-VL vocabulary; set_token_ids() switches them for
+# models with a different vocabulary (e.g. Qwen3.5/3.8: 248056/248057/248053).
+TOKEN_IDS = {"image": 151655, "video": 151656, "vision_start": 151652}
+
+
+def set_token_ids(image_token_id: int, video_token_id: int, vision_start_token_id: int) -> None:
+    TOKEN_IDS.update(
+        image=int(image_token_id), video=int(video_token_id), vision_start=int(vision_start_token_id)
+    )
+
 
 def get_rope_index_3(
     spatial_merge_size: Optional[int] = 2,
@@ -17,9 +28,9 @@ def get_rope_index_3(
         video_grid_thw = torch.repeat_interleave(video_grid_thw, video_grid_thw[:, 0], dim=0)
         video_grid_thw[:, 0] = 1
 
-    image_token_id = 151655
-    video_token_id = 151656
-    vision_start_token_id = 151652
+    image_token_id = TOKEN_IDS["image"]
+    video_token_id = TOKEN_IDS["video"]
+    vision_start_token_id = TOKEN_IDS["vision_start"]
     mrope_position_deltas = []
     if input_ids is not None and (image_grid_thw is not None or video_grid_thw is not None):
         total_input_ids = input_ids
@@ -183,9 +194,9 @@ def get_rope_index_25(
         position_ids (`torch.LongTensor` of shape `(3, batch_size, sequence_length)`)
         mrope_position_deltas (`torch.Tensor` of shape `(batch_size)`)
     """
-    image_token_id = 151655
-    video_token_id = 151656
-    vision_start_token_id = 151652
+    image_token_id = TOKEN_IDS["image"]
+    video_token_id = TOKEN_IDS["video"]
+    vision_start_token_id = TOKEN_IDS["vision_start"]
     mrope_position_deltas = []
     if input_ids is not None and (
         image_grid_thw is not None or video_grid_thw is not None
@@ -385,9 +396,9 @@ def get_rope_index_2(
         position_ids (`torch.LongTensor` of shape `(3, batch_size, sequence_length)`)
         mrope_position_deltas (`torch.Tensor` of shape `(batch_size)`)
     """
-    image_token_id = 151655
-    video_token_id = 151656
-    vision_start_token_id = 151652
+    image_token_id = TOKEN_IDS["image"]
+    video_token_id = TOKEN_IDS["video"]
+    vision_start_token_id = TOKEN_IDS["vision_start"]
     mrope_position_deltas = []
     if input_ids is not None and (
         image_grid_thw is not None or video_grid_thw is not None

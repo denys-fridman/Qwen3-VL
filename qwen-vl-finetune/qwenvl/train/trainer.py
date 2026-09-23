@@ -1,3 +1,4 @@
+import os
 import random
 from typing import Dict, List, Optional, Sequence, Tuple, Callable
 
@@ -28,6 +29,11 @@ from transformers.models.qwen3_vl_moe.modeling_qwen3_vl_moe import (
     Qwen3VLMoeModel,
 )
 from transformers.utils import logging
+
+try:  # Qwen3.5 / Qwen3.8 dense VLMs (transformers >= 5.8)
+    from transformers.models.qwen3_5.modeling_qwen3_5 import Qwen3_5Model, Qwen3_5VisionModel
+except ImportError:
+    Qwen3_5Model = Qwen3_5VisionModel = None
 
 logger = logging.get_logger(__name__)
 
@@ -319,8 +325,62 @@ def enable_dummy_vision_forward():
     vision tower and miss its collectives while other ranks run it, deadlocking
     NCCL. Patch the inner model forward to always run a zero-weighted vision
     forward, at the same execution point as the real one."""
-    for cls in (Qwen2VLModel, Qwen2_5_VLModel, Qwen3VLModel, Qwen3VLMoeModel):
+    classes = [Qwen2VLModel, Qwen2_5_VLModel, Qwen3VLModel, Qwen3VLMoeModel]
+    if Qwen3_5Model is not None:
+        classes.append(Qwen3_5Model)
+    for cls in classes:
         cls.forward = _make_forward_with_dummy_vision(cls.forward)
+
+
+PACKING_KWARGS = ("cu_seq_lens_q", "cu_seq_lens_k", "max_length_q", "max_length_k")
+
+
+def _strip_packing_kwargs(orig_forward):
+    def forward(self, *args, **kwargs):
+        for key in PACKING_KWARGS:
+            kwargs.pop(key, None)
+        return orig_forward(self, *args, **kwargs)
+
+    return forward
+
+
+def varlen_gdn_kernel_available() -> bool:
+    """transformers resolves Gated DeltaNet's chunk_gated_delta_rule to the
+    flash-linear-attention package when it is importable and otherwise to a
+    pure-PyTorch reference that ignores cu_seqlens (mirrors
+    transformers.integrations.hub_kernels.use_kernel_func_from_hub_with_fallback)."""
+    try:
+        from fla.ops.gated_delta_rule import chunk_gated_delta_rule  # noqa: F401
+    except Exception:  # noqa: BLE001 - any import failure means the fallback is used
+        return False
+    return True
+
+
+def enable_fa_kwargs_packing(check_gdn_kernel: bool = False):
+    """Packed micro-batches arrive as HF FlashAttentionKwargs (see the flattened
+    collator's "fa_kwargs" mode) and are consumed natively by the language model.
+    Qwen3.5 forwards **kwargs into the vision tower as well, whose attention
+    already passes its own cu_seq_lens for the image patches — strip ours there
+    so the two don't clash.
+
+    With check_gdn_kernel, refuse to run when the Gated DeltaNet varlen kernel
+    would fall back to the torch reference: that path ignores document
+    boundaries, so recurrent state would leak across the documents packed into
+    a micro-batch (a correctness problem, not just a slow one)."""
+    if check_gdn_kernel and not varlen_gdn_kernel_available():
+        message = (
+            "Gated DeltaNet varlen kernel unavailable: transformers would fall back to "
+            "its PyTorch reference, which ignores cu_seqlens, so recurrent state would "
+            "leak across the documents packed into a micro-batch. Install "
+            "flash-linear-attention (pip install flash-linear-attention) or set "
+            "ALLOW_GDN_TORCH_FALLBACK=1 to proceed anyway."
+        )
+        if os.environ.get("ALLOW_GDN_TORCH_FALLBACK") == "1":
+            logger.warning(message)
+        else:
+            raise RuntimeError(message)
+    if Qwen3_5VisionModel is not None:
+        Qwen3_5VisionModel.forward = _strip_packing_kwargs(Qwen3_5VisionModel.forward)
 
 
 def _split_indices_by_visual(dataset):
@@ -691,3 +751,6 @@ Qwen3VLVisionModel.print_trainable_parameters = (
 Qwen3VLModel.print_trainable_parameters = print_trainable_parameters
 Qwen3VLMoeVisionModel.print_trainable_parameters = print_trainable_parameters_visual
 Qwen3VLMoeModel.print_trainable_parameters = print_trainable_parameters
+if Qwen3_5Model is not None:
+    Qwen3_5VisionModel.print_trainable_parameters = print_trainable_parameters_visual
+    Qwen3_5Model.print_trainable_parameters = print_trainable_parameters

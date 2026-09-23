@@ -28,16 +28,12 @@ sys.path.append(str(project_root))
 from trainer import (
     replace_qwen2_vl_attention_class,
     enable_dummy_vision_forward,
+    enable_fa_kwargs_packing,
     enable_image_guaranteed_batches,
 )
 
-from transformers import (
-    Qwen2VLForConditionalGeneration,
-    Qwen2_5_VLForConditionalGeneration,
-    Qwen3VLForConditionalGeneration,
-    Qwen3VLMoeForConditionalGeneration
-)
 from qwenvl.data.data_processor import make_supervised_data_module
+from qwenvl.train.model_registry import resolve_model_class, resolve_model_spec
 from qwenvl.train.argument import (
     ModelArguments,
     DataArguments,
@@ -145,46 +141,45 @@ def train(attn_implementation="flash_attention_2"):
             "True; otherwise use an image-only dataset and set allow_text_only False."
         )
 
-    if "qwen3" in model_args.model_name_or_path.lower() and "a" in Path(model_args.model_name_or_path.rstrip("/")).name.lower():
-        model = Qwen3VLMoeForConditionalGeneration.from_pretrained(
-            model_args.model_name_or_path,
-            cache_dir=training_args.cache_dir,
-            attn_implementation=attn_implementation,
-            dtype=(torch.bfloat16 if training_args.bf16 else None),
-        )
-        data_args.model_type = "qwen3vl"
-    elif "qwen3" in model_args.model_name_or_path.lower():
-        model = Qwen3VLForConditionalGeneration.from_pretrained(
-            model_args.model_name_or_path,
-            cache_dir=training_args.cache_dir,
-            attn_implementation=attn_implementation,
-            dtype=(torch.bfloat16 if training_args.bf16 else None),
-        )
-        data_args.model_type = "qwen3vl"
-    elif "qwen2.5" in model_args.model_name_or_path.lower():
-        model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-            model_args.model_name_or_path,
-            cache_dir=training_args.cache_dir,
-            attn_implementation=attn_implementation,
-            dtype=(torch.bfloat16 if training_args.bf16 else None),
-        )
-        data_args.model_type = "qwen2.5vl"
-    else:
-        model = Qwen2VLForConditionalGeneration.from_pretrained(
-            model_args.model_name_or_path,
-            cache_dir=training_args.cache_dir,
-            attn_implementation=attn_implementation,
-            dtype=(torch.bfloat16 if training_args.bf16 else None),
-        )
-        data_args.model_type = "qwen2vl"
+    # Pick the model class from the checkpoint's config.model_type (not from the
+    # path name); the spec also fixes the rope variant and packing path.
+    config = transformers.AutoConfig.from_pretrained(
+        model_args.model_name_or_path, cache_dir=training_args.cache_dir
+    )
+    spec = resolve_model_spec(config.model_type)
+    model = resolve_model_class(spec).from_pretrained(
+        model_args.model_name_or_path,
+        cache_dir=training_args.cache_dir,
+        attn_implementation=attn_implementation,
+        dtype=(torch.bfloat16 if training_args.bf16 else None),
+    )
+    data_args.model_type = spec.rope_type
+    data_args.packing_mode = spec.packing_mode
+    # vision placeholder ids differ between vocabularies (Qwen3-VL vs Qwen3.5/3.8)
+    data_args.image_token_id = getattr(config, "image_token_id", 151655)
+    data_args.video_token_id = getattr(config, "video_token_id", 151656)
+    data_args.vision_start_token_id = getattr(config, "vision_start_token_id", 151652)
+    # Qwen3.5/3.8 chat templates inject a reasoning instruction unless thinking is off
+    data_args.chat_template_kwargs = {"enable_thinking": False} if spec.thinking_template else {}
 
-    print(f'the initlized model is {model_args.model_name_or_path} the class is {model.__class__.__name__}')
+    print(
+        f"the initialized model is {model_args.model_name_or_path}: class "
+        f"{model.__class__.__name__}, model_type {config.model_type}, "
+        f"packing {spec.packing_mode}"
+    )
     processor = AutoProcessor.from_pretrained(
         model_args.model_name_or_path,
     )
 
     if data_args.data_flatten or data_args.data_packing:
-        replace_qwen2_vl_attention_class()
+        if spec.packing_mode == "attention_mask":
+            replace_qwen2_vl_attention_class()
+        else:
+            # hybrid stacks (Qwen3.5/3.8) need the varlen Gated DeltaNet kernel
+            # for packing to respect document boundaries
+            text_config = getattr(config, "text_config", config)
+            has_linear_attention = "linear_attention" in (getattr(text_config, "layer_types", None) or [])
+            enable_fa_kwargs_packing(check_gdn_kernel=has_linear_attention)
     if data_args.allow_text_only:
         enable_dummy_vision_forward()
     if data_args.require_image_per_batch:

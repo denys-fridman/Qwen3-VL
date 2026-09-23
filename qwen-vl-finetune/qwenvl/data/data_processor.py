@@ -16,6 +16,7 @@ from torch.utils.data import Dataset, Subset
 import transformers
 
 from . import data_list
+from . import rope2d
 from .rope2d import get_rope_index_25, get_rope_index_2, get_rope_index_3
 
 IGNORE_INDEX = -100
@@ -182,6 +183,9 @@ def preprocess_qwen_visual(
     sources,
     processor,
     train_on_all_tokens=False,
+    image_token_id=IMAGE_TOKEN_INDEX,
+    video_token_id=VIDEO_TOKEN_INDEX,
+    chat_template_kwargs=None,
 ) -> Dict:
     if len(sources) != 1:
         raise ValueError(f"Expected 1 source, got {len(sources)}")
@@ -191,7 +195,11 @@ def preprocess_qwen_visual(
     messages = _build_messages(source, base_path)
 
     full_result = processor.apply_chat_template(
-        messages, tokenize=True, return_dict=True, return_tensors="pt"
+        messages,
+        tokenize=True,
+        return_dict=True,
+        return_tensors="pt",
+        **(chat_template_kwargs or {}),
     )
 
     input_ids = full_result["input_ids"]
@@ -202,9 +210,7 @@ def preprocess_qwen_visual(
         # Continued pretraining: loss on every token except vision placeholders,
         # which are replaced by visual embeddings and are never valid targets.
         labels = input_ids.clone()
-        labels[
-            (input_ids == IMAGE_TOKEN_INDEX) | (input_ids == VIDEO_TOKEN_INDEX)
-        ] = IGNORE_INDEX
+        labels[(input_ids == image_token_id) | (input_ids == video_token_id)] = IGNORE_INDEX
     else:
         labels = torch.full_like(input_ids, IGNORE_INDEX)
 
@@ -244,6 +250,17 @@ class LazySupervisedDataset(Dataset):
         self.video_min_total_pixels = getattr(
             data_args, "video_min_total_pixels", 256 * 28 * 28
         )
+        # vision placeholder ids come from the model config (train_qwen.py);
+        # rope2d locates images by these ids when building M-RoPE positions
+        self.image_token_id = getattr(data_args, "image_token_id", IMAGE_TOKEN_INDEX)
+        self.video_token_id = getattr(data_args, "video_token_id", VIDEO_TOKEN_INDEX)
+        rope2d.set_token_ids(
+            self.image_token_id,
+            self.video_token_id,
+            getattr(data_args, "vision_start_token_id", rope2d.TOKEN_IDS["vision_start"]),
+        )
+        self.chat_template_kwargs = getattr(data_args, "chat_template_kwargs", None) or {}
+
         self.model_type = data_args.model_type
         if data_args.model_type == "qwen3vl":
             self.get_rope_index = get_rope_index_3
@@ -376,6 +393,9 @@ class LazySupervisedDataset(Dataset):
             sources,
             self.processor,
             train_on_all_tokens=getattr(self.data_args, "train_on_all_tokens", False),
+            image_token_id=self.image_token_id,
+            video_token_id=self.video_token_id,
+            chat_template_kwargs=self.chat_template_kwargs,
         )
 
         seq_len = data_dict["input_ids"][0].size(0)
@@ -599,9 +619,18 @@ class DataCollatorForSupervisedDataset(object):
 
 @dataclass
 class FlattenedDataCollatorForSupervisedDataset(DataCollatorForSupervisedDataset):
-    """Collate examples into packed sequence with multi-modal support."""
+    """Collate examples into one packed sequence with multi-modal support.
+
+    packing_mode controls how the per-document boundaries reach the model:
+      "attention_mask": cu_seqlens travel in `attention_mask`, consumed by the
+          patched Qwen2/2.5/3-VL attention (trainer.replace_qwen2_vl_attention_class).
+      "fa_kwargs": HF FlashAttentionKwargs (cu_seq_lens_q/k, max_length_q/k) are
+          emitted and `attention_mask` is None; flash attention and Qwen3.5's
+          Gated DeltaNet layers consume them natively.
+    """
 
     tokenizer: transformers.PreTrainedTokenizer
+    packing_mode: str = "attention_mask"
 
     def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
         input_ids, labels, position_ids, attention_mask = tuple(
@@ -623,12 +652,18 @@ class FlattenedDataCollatorForSupervisedDataset(DataCollatorForSupervisedDataset
         labels = torch.cat(labels, dim=1)
         position_ids = torch.cat(position_ids, dim=2)
 
-        batch = dict(
-            input_ids=input_ids,
-            labels=labels,
-            attention_mask=cumsum_seq_lens,
-            position_ids=position_ids,
-        )
+        batch = dict(input_ids=input_ids, labels=labels, position_ids=position_ids)
+        if self.packing_mode == "fa_kwargs":
+            max_len = int(seq_lens.max())
+            batch.update(
+                attention_mask=None,
+                cu_seq_lens_q=cumsum_seq_lens,
+                cu_seq_lens_k=cumsum_seq_lens,
+                max_length_q=max_len,
+                max_length_k=max_len,
+            )
+        else:
+            batch["attention_mask"] = cumsum_seq_lens
         images = list(
             instance["pixel_values"]
             for instance in instances
@@ -703,7 +738,10 @@ def make_supervised_data_module(processor, data_args) -> Dict:
         )
 
     if data_args.data_flatten or data_args.data_packing:
-        data_collator = FlattenedDataCollatorForSupervisedDataset(processor.tokenizer)
+        data_collator = FlattenedDataCollatorForSupervisedDataset(
+            processor.tokenizer,
+            packing_mode=getattr(data_args, "packing_mode", "attention_mask"),
+        )
     else:
         data_collator = DataCollatorForSupervisedDataset(processor.tokenizer)
     return dict(
